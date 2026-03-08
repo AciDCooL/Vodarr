@@ -244,6 +244,7 @@ async def get_config():
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate):
     """Updates configuration and signals the downloader to update its settings."""
+    global current_config
     from dataclasses import asdict
     update_data = update.dict(exclude_unset=True)
     
@@ -253,7 +254,6 @@ async def update_config(update: ConfigUpdate):
     # Update current runtime config
     data = asdict(current_config)
     data.update(update_data)
-    global current_config
     current_config = AppConfig(**data)
     
     conf = current_config
