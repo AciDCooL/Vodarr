@@ -377,7 +377,7 @@ function SetupWizard({
               disabled={!config.base_url || !config.username || !config.password}
               className="w-full bg-blue-600 text-white py-6 rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-blue-500/40 hover:bg-blue-700 transition-all active:scale-95 disabled:grayscale disabled:opacity-50 flex items-center justify-center gap-4 text-sm"
             >
-              Start Syncing Library <ChevronRight size={20}/>
+              Start Downloading VODs <ChevronRight size={20}/>
             </button>
           </div>
         </div>

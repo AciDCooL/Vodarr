@@ -238,7 +238,11 @@ async def update_config(update: ConfigUpdate):
             conf.retry_start_hour,
             conf.retry_end_hour
         )
-    return conf
+    
+    from dataclasses import asdict
+    data = asdict(conf)
+    data["is_complete"] = conf.is_complete()
+    return data
 
 @app.get("/api/common-user-agents")
 async def get_ua_presets():
