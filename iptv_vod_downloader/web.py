@@ -363,7 +363,7 @@ async def get_categories(kind: str, refresh: bool = False):
         else:
             raise HTTPException(status_code=400, detail="Invalid kind")
         
-        cache_manager.set_categories(kind, cats)
+        db.set_categories(kind, cats)
         return cats
     except HTTPException:
         raise

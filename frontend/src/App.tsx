@@ -1211,9 +1211,10 @@ export default function App() {
   const fetchCategories = useCallback(async (kind: 'movies' | 'series', refresh: boolean = false) => {
     try {
       const data = await api.getCategories(kind, refresh);
-      setCategories(data);
+      setCategories(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch categories', err);
+      setCategories([]);
     }
   }, []);
 
@@ -1306,9 +1307,11 @@ export default function App() {
 
   // --- Filtered Data Computations ---
 
-  const filteredCats = categories.filter(c => 
+  const filteredCats = Array.isArray(categories) ? categories.filter(c => 
     c.category_name.toLowerCase().includes(catFilter.toLowerCase())
-  );
+  ) : [];
+
+  const displayItems = Array.isArray(items) ? items : [];
 
   // --- Event Handlers ---
 
@@ -1587,9 +1590,8 @@ export default function App() {
               </div>
             ) : (
               <div className={`p-6 ${viewMode === 'poster' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6' : 'flex flex-col space-y-1'}`}>
-                {items?.map((item, idx) => {
-                  if (viewMode === 'poster') {
-                    return (
+               {displayItems.map((item, idx) => {
+                 if (viewMode === 'poster') {                    return (
                       <div key={idx} className="group relative flex flex-col animate-in fade-in zoom-in-95 duration-300">
                         <div 
                           onClick={() => setSelectedItem(item)}
