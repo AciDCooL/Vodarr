@@ -1,4 +1,4 @@
-"""SQLite caching for IPTV VOD and Series lists."""
+"""SQLite caching for IPTV VOD and Series lists, config, and queue."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import sqlite3
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 from .config import CONFIG_DIR, AppConfig
 
 CACHE_DB = CONFIG_DIR / "vodarr.db"
@@ -27,7 +28,7 @@ class DatabaseManager:
                     value TEXT
                 )
             """)
-
+            
             # Table for Download Queue
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS queue (
@@ -99,10 +100,9 @@ class DatabaseManager:
                 [(item.get("queue_id"), json.dumps(item)) for item in items]
             )
 
-    # --- Catalog Cache Management (Original CacheManager methods) ---
+    # --- Catalog Cache Management ---
 
     def get_items(self, kind: str, category_id: str, expiry_hours: int) -> Optional[List[Dict[str, Any]]]:
-...
         """Retrieves items from the cache if they haven't expired."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
@@ -141,7 +141,6 @@ class DatabaseManager:
                 "INSERT OR REPLACE INTO category_sync (kind, category_id, last_updated) VALUES (?, ?, ?)",
                 (kind, category_id, time.time())
             )
-
 
     def clear_category(self, kind: str, category_id: str):
         """Forces a refresh by removing cache entries for a category."""
