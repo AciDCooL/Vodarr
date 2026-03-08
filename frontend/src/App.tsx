@@ -51,6 +51,9 @@ interface Item {
   genre?: string;
   releaseDate?: string;
   rating?: string;
+  duration?: string;
+  tmdb_id?: string;
+  rating_5based?: number;
 }
 
 interface Episode {
@@ -103,6 +106,7 @@ const api = {
     return fetch(`/api/items/${kind}/${catId}?${params.toString()}`).then(r => r.json());
   },
   getSeriesInfo: (seriesId: string) => fetch(`/api/series/${seriesId}`).then(r => r.json()),
+  getMovieInfo: (streamId: string) => fetch(`/api/movie/${streamId}`).then(r => r.json()),
   browseFolders: (path?: string) => fetch(`/api/browse-folders?path=${encodeURIComponent(path || '')}`).then(r => r.json()),
   getQueue: () => fetch('/api/queue').then(r => r.json()),
   addToQueue: (items: any[]) => fetch('/api/queue/add', {
@@ -671,6 +675,149 @@ function SettingsModal({
   );
 }
 
+// --- Item Details Modal ---
+
+function ItemDetailsModal({ 
+  item, 
+  kind, 
+  onClose, 
+  onQueue 
+}: { 
+  item: Item, 
+  kind: 'movies' | 'series', 
+  onClose: () => void,
+  onQueue: (item: Item) => void
+}) {
+  const [details, setDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadDetails = async () => {
+      try {
+        if (kind === 'movies') {
+          const data = await api.getMovieInfo(item.stream_id?.toString() || '');
+          setDetails(data.info);
+        } else {
+          const data = await api.getSeriesInfo(item.series_id?.toString() || '');
+          setDetails(data.info);
+        }
+      } catch (err) {
+        console.error('Failed to load item details', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDetails();
+  }, [item, kind]);
+
+  const info = details || item;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[250] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl w-full max-w-5xl overflow-hidden border dark:border-gray-800 flex flex-col md:flex-row max-h-[90vh] animate-in zoom-in-95 duration-300">
+        
+        {/* Backdrop / Poster Area */}
+        <div className="relative w-full md:w-[400px] h-64 md:h-auto bg-gray-200 dark:bg-gray-800 flex-shrink-0">
+          <img 
+            src={item.cover} 
+            className="w-full h-full object-cover" 
+            alt={item.name}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden" />
+          <button 
+            onClick={onClose}
+            className="absolute top-6 left-6 p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-2xl transition-all md:hidden"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-8 right-8 p-3 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-red-500 rounded-2xl transition-all hidden md:flex active:scale-90"
+          >
+            <X size={24} />
+          </button>
+
+          <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-8">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                  {kind === 'movies' ? 'Movie' : 'Series'}
+                </span>
+                {info.genre && (
+                  <span className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                    {info.genre.split(',')[0]}
+                  </span>
+                )}
+                {info.rating && (
+                  <div className="flex items-center gap-1 text-amber-500">
+                    <Star size={14} fill="currentColor" />
+                    <span className="text-xs font-black">{info.rating}</span>
+                  </div>
+                )}
+              </div>
+              
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none">
+                {item.name}
+              </h2>
+              
+              <div className="flex items-center gap-6 text-gray-500 dark:text-gray-400 font-bold text-sm">
+                <div className="flex items-center gap-2">
+                  <Clock size={16} />
+                  <span>{info.duration || info.last_modified || 'N/A'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} />
+                  <span>{info.releaseDate || item.year || item.display_year || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Storyline</h3>
+              <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                {loading ? 'Fetching content details...' : (info.plot || 'No description available for this title.')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+              {info.cast && (
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Cast</h3>
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{info.cast}</p>
+                </div>
+              )}
+              {info.director && (
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Director</h3>
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{info.director}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Footer */}
+          <div className="p-8 md:p-12 bg-gray-50 dark:bg-gray-950/50 border-t dark:border-gray-800 flex items-center justify-between">
+            <div className="hidden sm:block">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ready to download</p>
+              <p className="text-xs font-bold dark:text-gray-300 mt-1">High Quality Stream</p>
+            </div>
+            <button 
+              onClick={() => { onQueue(item); onClose(); }}
+              className="flex-1 sm:flex-none px-12 py-5 bg-blue-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/40 active:scale-95 flex items-center justify-center gap-4"
+            >
+              {kind === 'series' ? 'Select Episodes' : 'Add to Queue'} <Download size={20} strokeWidth={3}/>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Episode Selector Modal Component ---
 
 function EpisodeSelectorModal({
@@ -947,6 +1094,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedSeries, setSelectedSeries] = useState<Item | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [catFilter, setCatFilter] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
@@ -1226,6 +1375,15 @@ export default function App() {
         />
       )}
 
+      {selectedItem && (
+        <ItemDetailsModal
+          item={selectedItem}
+          kind={activeTab}
+          onClose={() => setSelectedItem(null)}
+          onQueue={handleAddToQueue}
+        />
+      )}
+
       {selectedSeries && (
         <EpisodeSelectorModal
           series={selectedSeries}
@@ -1371,7 +1529,10 @@ export default function App() {
                   if (viewMode === 'poster') {
                     return (
                       <div key={idx} className="group relative flex flex-col animate-in fade-in zoom-in-95 duration-300">
-                        <div className="aspect-[2/3] rounded-[1.5rem] overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-lg border-2 border-white dark:border-gray-800 transition-all group-hover:scale-[1.03] group-hover:shadow-blue-500/20 group-hover:border-blue-500/50">
+                        <div 
+                          onClick={() => setSelectedItem(item)}
+                          className="aspect-[2/3] rounded-[1.5rem] overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-lg border-2 border-white dark:border-gray-800 transition-all group-hover:scale-[1.03] group-hover:shadow-blue-500/20 group-hover:border-blue-500/50 cursor-pointer"
+                        >
                           {item.cover ? (
                             <img src={item.cover} alt="" className="w-full h-full object-cover" loading="lazy" />
                           ) : (
@@ -1381,7 +1542,7 @@ export default function App() {
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                             <button 
-                              onClick={() => handleAddToQueue(item)}
+                              onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
                               className="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 flex items-center justify-center gap-2"
                             >
                               {activeTab === 'series' ? <ChevronRight size={16}/> : <Download size={16}/>}
@@ -1399,7 +1560,11 @@ export default function App() {
 
                   if (viewMode === 'compact') {
                     return (
-                      <div key={idx} className="px-6 py-3 rounded-[1.5rem] hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800">
+                      <div 
+                        key={idx} 
+                        onClick={() => setSelectedItem(item)}
+                        className="px-6 py-3 rounded-[1.5rem] hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                      >
                         <div className="flex items-center gap-6 flex-1 min-w-0">
                           <div className="w-12 h-16 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border-2 border-white dark:border-gray-800">
                             {item.cover ? (
@@ -1419,7 +1584,7 @@ export default function App() {
                           </div>
                         </div>
                         <button 
-                          onClick={() => handleAddToQueue(item)}
+                          onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
                           className="ml-6 bg-blue-600 text-white p-3 rounded-2xl font-bold hover:bg-blue-700 opacity-0 group-hover:opacity-100 transition-all active:scale-90 shadow-lg shadow-blue-500/30 flex items-center gap-2"
                         >
                           {activeTab === 'series' ? <ChevronRight size={20}/> : <Download size={20}/>}
@@ -1431,14 +1596,18 @@ export default function App() {
 
                   // Thin List
                   return (
-                    <div key={idx} className="px-4 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800">
+                    <div 
+                      key={idx} 
+                      onClick={() => setSelectedItem(item)}
+                      className="px-4 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                    >
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <span className="text-[10px] font-black text-gray-400 w-8 tabular-nums">{(offset + idx + 1).toString().padStart(2, '0')}</span>
                         <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter opacity-60">({item.display_year || item.year || 'N/A'})</span>
                       </div>
                       <button 
-                        onClick={() => handleAddToQueue(item)}
+                        onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
                         className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 p-1.5 rounded-lg hover:bg-blue-600 hover:text-white opacity-0 group-hover:opacity-100 transition-all active:scale-90"
                       >
                         {activeTab === 'series' ? <ChevronRight size={14}/> : <Download size={14}/>}

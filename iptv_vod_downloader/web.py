@@ -349,11 +349,22 @@ async def get_items(kind: str, category_id: str, search: Optional[str] = None, o
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/series/{series_id}")
-async def get_series_info(series_id: str):
+async def get_series_info(series_id: string):
     """Fetches detailed episode information for a specific TV Series."""
     c = get_client()
     try:
         return c.get_series_info(series_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/movie/{stream_id}")
+async def get_movie_info(stream_id: str):
+    """Fetches detailed information for a specific movie."""
+    c = get_client()
+    try:
+        return c.get_vod_info(stream_id)
     except HTTPException:
         raise
     except Exception as e:
