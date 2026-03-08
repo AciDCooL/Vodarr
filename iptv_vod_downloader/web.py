@@ -374,6 +374,11 @@ async def get_categories(kind: str, refresh: bool = False):
 async def get_items(kind: str, category_id: str, search: Optional[str] = None, offset: int = 0, limit: int = 50, refresh: bool = False):
     """Fetches items (Movies or Series) for a specific category with search, pagination and optional refresh."""
     try:
+        conf = current_config
+        is_cached = False
+        if not refresh:
+            is_cached = db.is_cached(kind, category_id, conf.cache_expiry_hours)
+
         all_items = get_items_from_provider(kind, category_id, force_refresh=refresh)
         
         # Apply search filter
@@ -390,7 +395,8 @@ async def get_items(kind: str, category_id: str, search: Optional[str] = None, o
             "total": total,
             "items": paginated,
             "offset": offset,
-            "limit": limit
+            "limit": limit,
+            "is_cached": is_cached
         }
     except Exception as e:
         logger.exception("Failed to fetch items")

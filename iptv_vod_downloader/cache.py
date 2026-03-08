@@ -155,3 +155,15 @@ class DatabaseManager:
     def set_categories(self, kind: str, categories: List[Dict[str, Any]]):
         """Stores categories in the cache."""
         self.set_items(kind, "_categories_", categories)
+
+    def is_cached(self, kind: str, category_id: str, expiry_hours: int) -> bool:
+        """Checks if valid cache exists for a given category/kind."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT last_updated FROM category_sync WHERE kind = ? AND category_id = ?",
+                (kind, category_id)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return False
+            return (time.time() - row[0]) <= (expiry_hours * 3600)

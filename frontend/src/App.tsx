@@ -1147,6 +1147,7 @@ export default function App() {
   const [catFilter, setCatFilter] = useState('');
   const [selectedCat, setSelectedCat] = useState('0');
   const [items, setItems] = useState<Item[]>([]);
+  const [isItemsCached, setIsItemsCached] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
   const [offset, setOffset] = useState(0);
   const [itemSearch, setItemSearch] = useState('');
@@ -1229,6 +1230,7 @@ export default function App() {
     try {
       const data = await api.getItems(kind, catId, search, newOffset, LIMIT, refresh);
       if (data && Array.isArray(data.items)) {
+        setIsItemsCached(!!data.is_cached);
         if (append) {
           setItems(prev => [...prev, ...data.items]);
         } else {
@@ -1568,9 +1570,14 @@ export default function App() {
           
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 flex-col gap-6">
+              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 flex-col gap-6 animate-in fade-in duration-500">
                 <RefreshCw size={64} className="animate-spin text-blue-600" strokeWidth={3} />
-                <p className="font-black uppercase tracking-[0.2em] text-[10px]">Syncing Library...</p>
+                <div className="text-center space-y-1">
+                  <p className="font-black uppercase tracking-[0.2em] text-[10px] text-gray-900 dark:text-white">
+                    {isItemsCached ? 'Restoring from database...' : 'Syncing Library...'}
+                  </p>
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest opacity-60">Please wait a moment</p>
+                </div>
               </div>
             ) : error ? (
               <div className="flex items-center justify-center h-full text-red-500 flex-col gap-6">
