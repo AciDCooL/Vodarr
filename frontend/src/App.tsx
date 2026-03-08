@@ -159,7 +159,13 @@ function ConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500/20">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500/20 relative">
+        <button 
+          onClick={onCancel} 
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors active:scale-90"
+        >
+          <X size={20} />
+        </button>
         <div className="p-8 text-center space-y-4">
           <div className="bg-red-100 dark:bg-red-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="text-red-600 dark:text-red-400" size={32} />
@@ -168,7 +174,7 @@ function ConfirmDialog({
           <p className="text-gray-500 dark:text-gray-400 font-medium">{message}</p>
         </div>
         <div className="flex border-t dark:border-gray-800">
-          <button onClick={onCancel} className="flex-1 px-6 py-5 font-black uppercase tracking-widest text-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+          <button onClick={onCancel} className="flex-1 px-6 py-5 font-black uppercase tracking-widest text-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Dismiss</button>
           <button onClick={onConfirm} className="flex-1 px-6 py-5 font-black uppercase tracking-widest text-xs bg-red-600 text-white hover:bg-red-700 transition-colors shadow-inner">Confirm</button>
         </div>
       </div>
@@ -459,7 +465,14 @@ function SettingsModal({
         </div>
         
         {/* Settings Content */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 overflow-hidden relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-8 right-8 p-3 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-red-500 rounded-2xl transition-all hidden md:flex active:scale-90 z-10"
+          >
+            <X size={24} />
+          </button>
+
           <div className="flex-1 p-10 overflow-y-auto space-y-8">
             {activeGroup === 'server' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -660,7 +673,7 @@ function SettingsModal({
               onClick={onClose} 
               className="px-8 py-3.5 text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-gray-700 dark:hover:text-gray-200 transition-all"
             >
-              Cancel
+              Dismiss
             </button>
             <button 
               onClick={onSave} 
@@ -1058,7 +1071,7 @@ function EpisodeSelectorModal({
             </div>
           </div>
           <div className="flex gap-4">
-            <button onClick={onClose} className="px-8 py-4 text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-gray-700 dark:hover:text-gray-200 transition-all">Cancel</button>
+            <button onClick={onClose} className="px-8 py-4 text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-gray-700 dark:hover:text-gray-200 transition-all">Dismiss</button>
             <button 
               onClick={handleQueueSelected}
               disabled={selectedEpisodes.size === 0}
