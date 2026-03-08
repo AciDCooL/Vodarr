@@ -1175,7 +1175,7 @@ export default function App() {
             <Download className="text-white" size={24} strokeWidth={3} />
           </div>
           <div>
-            <h1 className="text-xl font-black tracking-tighter text-gray-900 dark:text-white uppercase leading-none">VOD Downloader</h1>
+            <h1 className="text-xl font-black tracking-tighter text-gray-900 dark:text-white uppercase leading-none">Vodarr</h1>
             <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] leading-none mt-1 pl-0.5">Xtream Client</p>
           </div>
         </div>
