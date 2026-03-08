@@ -140,8 +140,11 @@ function SafeImage({
 
   if (!src || error) {
     return (
-      <div className={`w-full h-full flex items-center justify-center text-gray-400 bg-gray-100 dark:bg-gray-800 ${className}`}>
-        <FallbackIcon size={iconSize} strokeWidth={1.5} className="opacity-40" />
+      <div className={`w-full h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 border-2 border-red-500/20 ${className}`}>
+        <div className="relative flex items-center justify-center">
+          <FallbackIcon size={iconSize} strokeWidth={1} className="text-gray-300 dark:text-gray-700 opacity-20" />
+          <X size={iconSize * 1.2} strokeWidth={4} className="absolute text-red-600/60 rotate-12" />
+        </div>
       </div>
     );
   }
@@ -1757,6 +1760,16 @@ export default function App() {
             <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-3">
               <Download size={20} className="text-blue-600"/> Queue
             </h3>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 px-4 py-1.5 rounded-full shadow-inner">
+                <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Total: {queue.length}</span>
+              </div>
+              <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-4 py-1.5 rounded-full shadow-inner">
+                <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">Remaining: {queue.filter(i => i.status !== 'completed').length}</span>
+              </div>
+            </div>
+
             <div className="bg-green-100 dark:bg-green-900/30 px-4 py-1.5 rounded-full flex items-center gap-3 shadow-inner" title="Combined bandwidth">
               <div className={`w-2 h-2 rounded-full bg-green-500 ${totalSpeed > 0 ? 'animate-pulse' : ''}`}/>
               <span className="text-xs font-black text-green-700 dark:text-green-400 tabular-nums">
