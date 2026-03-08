@@ -41,9 +41,6 @@ jobs:
             type=sha,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -52,8 +49,29 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Update myContainerOSconfig
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.name "Vodarr CI"
+          git config --global user.email "ci@vodarr.local"
+          
+          # Clone the config repo using the PAT
+          git clone https://x-access-token:${{ secrets.GH_PAT_VODARR_DEPLOY }}@github.com/${{ github.repository_owner }}/myContainerOSconfig.git config-repo
+          
+          cd config-repo
+          FILE="applications/applicationset-downloaders/vodarr/values.yaml"
+          
+          # Update the sync-at annotation with current timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          sed -i "s/argocd.argoproj.io\/sync-at: .*/argocd.argoproj.io\/sync-at: \"$TIMESTAMP\"/" "$FILE"
+          
+          git add "$FILE"
+          git commit -m "chore(vodarr): auto-update sync-at to $TIMESTAMP [skip ci]"
+          git push origin master
 
