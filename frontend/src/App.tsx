@@ -825,7 +825,7 @@ function ItemDetailsModal({
             src={item.cover} 
             className="w-full h-full object-cover" 
             alt={item.name}
-            fallbackIcon={activeTab === 'movies' ? Film : Tv}
+            fallbackIcon={kind === 'movies' ? Film : Tv}
             iconSize={48}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden" />
