@@ -230,21 +230,34 @@ class DownloadManager:
 
     # Internal helpers -------------------------------------------------
 
-    def _is_in_retry_window(self) -> bool:
-        """Checks if current local time is within the scheduled retry window."""
+    def _is_in_download_window(self) -> bool:
+        """Checks if current local time is within the allowed download window."""
         if self.retry_start_hour == 0 and self.retry_end_hour == 24:
             return True
         
         now = datetime.datetime.now().hour
         if self.retry_start_hour <= self.retry_end_hour:
+            # Standard window (e.g., 08:00 to 22:00)
             return self.retry_start_hour <= now < self.retry_end_hour
         else:
-            # Handle overnight window (e.g. 22 to 04)
+            # Overnight window (e.g., 22:00 to 08:00)
             return now >= self.retry_start_hour or now < self.retry_end_hour
 
     def _run(self) -> None:
         while not self._stop_event.is_set():
             self._pause_event.wait()
+            
+            # Check for download window BEFORE picking up an item
+            if not self._is_in_download_window():
+                # Notify UI if we have a current item, otherwise just wait
+                if self._current_item:
+                    self._current_item.status = "queued"
+                    self._current_item.error = f"Waiting for download window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
+                    self._notify(self._current_item, force=True)
+                
+                time.sleep(60) # Wait a minute before checking window again
+                continue
+
             item = self._next_item()
             if item is None:
                 self._has_items.wait(timeout=self._idle_wait_timeout)
@@ -264,11 +277,11 @@ class DownloadManager:
                 
                 # Check for auto-retry if failed
                 if item.status == "failed" and self.auto_retry:
-                    # Respect retry window
-                    while not self._is_in_retry_window() and not self._stop_event.is_set():
-                        item.error = f"Waiting for retry window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
+                    # Respect download window for retries too
+                    while not self._is_in_download_window() and not self._stop_event.is_set():
+                        item.error = f"Waiting for download window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
                         self._notify(item, force=True)
-                        time.sleep(60) # Check every minute
+                        time.sleep(60)
                     
                     if self._stop_event.is_set():
                         break

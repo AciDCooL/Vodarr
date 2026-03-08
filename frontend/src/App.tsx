@@ -609,30 +609,44 @@ function SettingsModal({
 
                   <div className="space-y-4 pt-4 border-t dark:border-gray-800">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-2">
-                      <Clock size={12}/> Scheduled Retry Window (Local Time)
+                      <Clock size={12}/> Download Window (Allowed Hours)
                     </label>
                     <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">Start Hour</span>
-                        <input 
-                          type="number" min="0" max="23"
-                          className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                          value={config.retry_start_hour} 
-                          onChange={e => setConfig({...config, retry_start_hour: parseInt(e.target.value) || 0})}
-                        />
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">Start Time</span>
+                        <div className="relative">
+                           <select
+                             className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
+                             value={config.retry_start_hour}
+                             onChange={e => setConfig({...config, retry_start_hour: parseInt(e.target.value) || 0})}
+                           >
+                             {Array.from({length: 25}, (_, i) => (
+                               <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                             ))}
+                           </select>
+                           <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none"/>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">End Hour</span>
-                        <input 
-                          type="number" min="0" max="23"
-                          className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                          value={config.retry_end_hour} 
-                          onChange={e => setConfig({...config, retry_end_hour: parseInt(e.target.value) || 0})}
-                        />
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">End Time</span>
+                        <div className="relative">
+                           <select
+                             className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
+                             value={config.retry_end_hour}
+                             onChange={e => setConfig({...config, retry_end_hour: parseInt(e.target.value) || 0})}
+                           >
+                             {Array.from({length: 25}, (_, i) => (
+                               <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                             ))}
+                           </select>
+                           <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none"/>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                    <p className="text-[10px] text-gray-500 font-medium italic pl-1">
+                      Downloads will only be active between these hours. Set 00:00 to 24:00 for no restriction.
+                    </p>
+                  </div>                </div>
               </div>
             )}
           </div>
