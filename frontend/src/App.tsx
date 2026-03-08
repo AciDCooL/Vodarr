@@ -103,6 +103,7 @@ const api = {
     return fetch(`/api/items/${kind}/${catId}?${params.toString()}`).then(r => r.json());
   },
   getSeriesInfo: (seriesId: string) => fetch(`/api/series/${seriesId}`).then(r => r.json()),
+  browseFolders: (path?: string) => fetch(`/api/browse-folders?path=${encodeURIComponent(path || '')}`).then(r => r.json()),
   getQueue: () => fetch('/api/queue').then(r => r.json()),
   addToQueue: (items: any[]) => fetch('/api/queue/add', {
     method: 'POST',
@@ -191,6 +192,93 @@ const sanitiseFilename = (name: string): string => {
   return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim();
 };
 
+// --- Folder Selector Modal ---
+
+function FolderSelectorModal({ 
+  currentPath, 
+  onClose, 
+  onSelect 
+}: { 
+  currentPath: string, 
+  onClose: () => void, 
+  onSelect: (path: string) => void 
+}) {
+  const [folders, setFolders] = useState<any[]>([]);
+  const [path, setPath] = useState(currentPath);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFolders = async () => {
+      setLoading(true);
+      try {
+        const data = await api.browseFolders(path);
+        setFolders(data.folders);
+        setPath(data.current_path);
+      } catch (err) {
+        console.error('Failed to browse folders', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadFolders();
+  }, [path]);
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[300] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden border dark:border-gray-800 flex flex-col h-[500px] animate-in zoom-in-95 duration-200">
+        <div className="p-8 border-b dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/40">
+          <div className="flex items-center gap-4">
+            <div className="bg-amber-500 p-2.5 rounded-xl">
+              <Folder className="text-white" size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black dark:text-white uppercase tracking-tight">Browse Folders</h3>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 truncate max-w-[300px]">{path}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-xl transition-all active:scale-90">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-1">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-400">
+              <RefreshCw className="animate-spin" size={32} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Scanning Disk...</span>
+            </div>
+          ) : (
+            folders.map((folder, idx) => (
+              <button
+                key={idx}
+                onClick={() => setPath(folder.path)}
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all group ${folder.is_parent ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              >
+                <div className={`p-2 rounded-lg ${folder.is_parent ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-600'}`}>
+                  {folder.is_parent ? <ChevronRight size={16} className="rotate-180" /> : <Folder size={16} />}
+                </div>
+                <span className={`font-bold text-sm ${folder.is_parent ? 'text-blue-600' : 'text-gray-700 dark:text-gray-200'} truncate`}>
+                  {folder.name}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="p-6 border-t dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40 flex justify-end gap-3">
+          <button onClick={onClose} className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-700">Cancel</button>
+          <button 
+            onClick={() => { onSelect(path); onClose(); }} 
+            className="px-10 py-3 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <Check size={16} strokeWidth={3}/> Select This Folder
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Setup Wizard Component ---
 
 function SetupWizard({ 
@@ -202,10 +290,18 @@ function SetupWizard({
   setConfig: (c: Config) => void, 
   onSave: () => void
 }) {
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
   if (!config) return null;
 
   return (
     <div className="fixed inset-0 bg-gray-100 dark:bg-gray-950 z-[200] flex items-center justify-center p-4">
+      {showFolderPicker && (
+        <FolderSelectorModal 
+          currentPath={config.download_dir}
+          onClose={() => setShowFolderPicker(false)}
+          onSelect={(p) => setConfig({...config, download_dir: p})}
+        />
+      )}
       <div className="bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden border dark:border-gray-800 animate-in fade-in zoom-in-95 duration-500">
         <div className="p-12 space-y-10">
           <div className="text-center space-y-4">
@@ -256,13 +352,21 @@ function SetupWizard({
 
             <div className="space-y-3">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Download Directory</label>
-              <div className="relative group">
-                <Folder className="absolute left-5 top-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={20}/>
-                <input 
-                  className="w-full border-none rounded-2xl px-14 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold"
-                  value={config.download_dir} 
-                  onChange={e => setConfig({...config, download_dir: e.target.value})}
-                />
+              <div className="flex gap-3">
+                <div className="relative group flex-1">
+                  <Folder className="absolute left-5 top-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={20}/>
+                  <input 
+                    className="w-full border-none rounded-2xl px-14 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold"
+                    value={config.download_dir} 
+                    onChange={e => setConfig({...config, download_dir: e.target.value})}
+                  />
+                </div>
+                <button 
+                  onClick={() => setShowFolderPicker(true)}
+                  className="px-6 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-300 rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95 border-2 border-transparent hover:border-blue-500/20"
+                >
+                  <Folder size={20}/>
+                </button>
               </div>
             </div>
           </div>
@@ -300,6 +404,7 @@ function SettingsModal({
   onTest: () => void
 }) {
   const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'automation'>('server');
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
   if (!config) return null;
 
   const groups = [
@@ -310,6 +415,13 @@ function SettingsModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+      {showFolderPicker && (
+        <FolderSelectorModal 
+          currentPath={config.download_dir}
+          onClose={() => setShowFolderPicker(false)}
+          onSelect={(p) => setConfig({...config, download_dir: p})}
+        />
+      )}
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden border dark:border-gray-800 flex flex-col md:flex-row h-[600px]">
         {/* Settings Sidebar */}
         <div className="w-full md:w-64 bg-gray-50 dark:bg-gray-950 border-r dark:border-gray-800 p-6 flex flex-col justify-between">
@@ -398,13 +510,21 @@ function SettingsModal({
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Download Directory</label>
-                    <div className="relative">
-                      <Folder className="absolute left-4 top-3.5 text-gray-400" size={18}/>
-                      <input 
-                        className="w-full border-none rounded-2xl px-12 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                        value={config.download_dir} 
-                        onChange={e => setConfig({...config, download_dir: e.target.value})}
-                      />
+                    <div className="flex gap-3">
+                      <div className="relative group flex-1">
+                        <Folder className="absolute left-4 top-3.5 text-gray-400" size={18}/>
+                        <input 
+                          className="w-full border-none rounded-2xl px-12 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                          value={config.download_dir} 
+                          onChange={e => setConfig({...config, download_dir: e.target.value})}
+                        />
+                      </div>
+                      <button 
+                        onClick={() => setShowFolderPicker(true)}
+                        className="px-5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all border dark:border-gray-800"
+                      >
+                        <Folder size={18}/>
+                      </button>
                     </div>
                   </div>
 

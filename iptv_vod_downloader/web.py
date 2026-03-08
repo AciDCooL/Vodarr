@@ -245,6 +245,44 @@ async def get_ua_presets():
     """Returns the list of predefined User-Agent strings."""
     return COMMON_USER_AGENTS
 
+@app.get("/api/browse-folders")
+async def browse_folders(path: Optional[str] = None):
+    """Lists subdirectories for a given path to help the user choose a download folder."""
+    if not path:
+        path = "/"
+    
+    p = Path(path)
+    if not p.exists() or not p.is_dir():
+        # Fallback to root if path is invalid
+        p = Path("/")
+    
+    folders = []
+    try:
+        # Include parent directory if not at root
+        if p != p.parent:
+            folders.append({
+                "name": "..",
+                "path": str(p.parent),
+                "is_parent": True
+            })
+
+        # List subdirectories, skipping hidden ones
+        for item in sorted(p.iterdir()):
+            if item.is_dir() and not item.name.startswith("."):
+                folders.append({
+                    "name": item.name,
+                    "path": str(item.absolute()),
+                    "is_parent": False
+                })
+    except Exception as e:
+        logger.error(f"Failed to list directory {path}: {e}")
+        # Return empty list or error
+    
+    return {
+        "current_path": str(p.absolute()),
+        "folders": folders
+    }
+
 @app.get("/api/test-connection")
 async def test_connection():
     """Tests the connection to the IPTV provider API."""
