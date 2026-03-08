@@ -32,6 +32,12 @@ class AppConfig:
         "Chrome/118.0.5993.70 Safari/537.36"
     ))
     web_port: int = int(os.getenv("IPTV_PORT", "6767"))
+    cache_expiry_hours: int = int(os.getenv("IPTV_CACHE_EXPIRY", "24"))
+    auto_retry_failed: bool = os.getenv("IPTV_AUTO_RETRY", "false").lower() == "true"
+    max_retries: int = int(os.getenv("IPTV_MAX_RETRIES", "3"))
+    retry_forever: bool = os.getenv("IPTV_RETRY_FOREVER", "false").lower() == "true"
+    retry_start_hour: int = int(os.getenv("IPTV_RETRY_START", "4"))
+    retry_end_hour: int = int(os.getenv("IPTV_RETRY_END", "9"))
 
     def is_complete(self) -> bool:
         """Return True when the configuration looks usable."""

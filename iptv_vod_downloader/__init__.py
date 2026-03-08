@@ -4,5 +4,4 @@ __all__ = [
     "config",
     "api",
     "downloader",
-    "gui",
 ]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 import time
 import uuid
+import datetime
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,6 +35,7 @@ class DownloadItem:
     downloaded_bytes: int = 0
     total_size: int = 0
     transient_errors: int = 0
+    retries: int = 0
     error: Optional[str] = None
     queue_id: str = field(default_factory=lambda: uuid.uuid4().hex)
     _last_notified_status: str = field(default="", init=False, repr=False)
@@ -57,6 +59,7 @@ class DownloadItem:
             "downloaded_bytes": self.downloaded_bytes,
             "total_size": self.total_size,
             "transient_errors": self.transient_errors,
+            "retries": self.retries,
             "error": self.error,
             "meta": self.meta,
             "queue_id": self.queue_id,
@@ -87,6 +90,12 @@ class DownloadManager:
         self,
         callback: Optional[StatusCallback] = None,
         user_agent: Optional[str] = None,
+        auto_retry: bool = False,
+        max_retries: int = 3,
+        retry_forever: bool = False,
+        retry_start_hour: int = 0,
+        retry_end_hour: int = 24,
+        url_builder: Optional[Callable[[DownloadItem], str]] = None,
     ) -> None:
         self._queue: List[DownloadItem] = []
         self._lock = threading.Lock()
@@ -98,6 +107,12 @@ class DownloadManager:
         self._worker: Optional[threading.Thread] = None
         self._callback = callback
         self._user_agent = user_agent
+        self.auto_retry = auto_retry
+        self.max_retries = max_retries
+        self.retry_forever = retry_forever
+        self.retry_start_hour = retry_start_hour
+        self.retry_end_hour = retry_end_hour
+        self.url_builder = url_builder
         self._current_item: Optional[DownloadItem] = None
         self._current_response: Optional[requests.Response] = None
         self._cancelled_queue_ids: set[str] = set()
@@ -105,6 +120,13 @@ class DownloadManager:
 
     def update_user_agent(self, user_agent: str) -> None:
         self._user_agent = user_agent
+
+    def update_retry_settings(self, auto_retry: bool, max_retries: int, retry_forever: bool, start_hour: int, end_hour: int) -> None:
+        self.auto_retry = auto_retry
+        self.max_retries = max_retries
+        self.retry_forever = retry_forever
+        self.retry_start_hour = start_hour
+        self.retry_end_hour = end_hour
 
     def start(self) -> None:
         if self._worker and self._worker.is_alive():
@@ -188,11 +210,37 @@ class DownloadManager:
                 return True
         return False
 
+    def restart_item(self, item: DownloadItem) -> None:
+        """Resets item stats and re-queues it."""
+        item.status = "queued"
+        item.progress = 0.0
+        item.speed = 0.0
+        item.downloaded_bytes = 0
+        item.transient_errors = 0
+        item.retries = 0
+        item.error = None
+        with self._lock:
+            self._queue.append(item)
+            self._has_items.set()
+        self._notify(item, force=True)
+
     def queued_items(self) -> List[DownloadItem]:
         with self._lock:
             return list(self._queue)
 
     # Internal helpers -------------------------------------------------
+
+    def _is_in_retry_window(self) -> bool:
+        """Checks if current local time is within the scheduled retry window."""
+        if self.retry_start_hour == 0 and self.retry_end_hour == 24:
+            return True
+        
+        now = datetime.datetime.now().hour
+        if self.retry_start_hour <= self.retry_end_hour:
+            return self.retry_start_hour <= now < self.retry_end_hour
+        else:
+            # Handle overnight window (e.g. 22 to 04)
+            return now >= self.retry_start_hour or now < self.retry_end_hour
 
     def _run(self) -> None:
         while not self._stop_event.is_set():
@@ -202,11 +250,65 @@ class DownloadManager:
                 self._has_items.wait(timeout=self._idle_wait_timeout)
                 continue
 
+            # --- DYNAMIC URL REFRESH ---
+            # If a builder is provided, get the latest URL (handles cred changes)
+            if self.url_builder:
+                with suppress(Exception):
+                    item.stream_url = self.url_builder(item)
+
             session = requests.Session()
             session.headers.update(build_headers(self._user_agent or ""))
             session.headers["Accept"] = "*/*"
             try:
                 self._download_item(session, item)
+                
+                # Check for auto-retry if failed
+                if item.status == "failed" and self.auto_retry:
+                    # Respect retry window
+                    while not self._is_in_retry_window() and not self._stop_event.is_set():
+                        item.error = f"Waiting for retry window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
+                        self._notify(item, force=True)
+                        time.sleep(60) # Check every minute
+                    
+                    if self._stop_event.is_set():
+                        break
+
+                    can_retry = self.retry_forever or (item.retries < self.max_retries)
+                    
+                    if can_retry:
+                        item.retries += 1
+                        
+                        # --- FALLBACK ROTATION ---
+                        # If we have fallback URLs in meta, cycle to the next one
+                        fallbacks = item.meta.get("fallbacks", [])
+                        if fallbacks and (item.retries - 1) < len(fallbacks):
+                            new_url = fallbacks[item.retries - 1]
+                            item.stream_url = new_url
+                            
+                            # Update target path extension to match new URL
+                            new_ext = new_url.split(".")[-1]
+                            if len(new_ext) <= 4: # Sanity check for extension
+                                item.target_path = item.target_path.with_suffix(f".{new_ext}")
+                            
+                            item.error = f"Auto-retry {item.retries}{'' if self.retry_forever else '/' + str(self.max_retries)} (Format swap: .{new_ext})"
+                        else:
+                            item.error = f"Auto-retry {item.retries}{'' if self.retry_forever else '/' + str(self.max_retries)}"
+                        
+                        item.status = "queued"
+                        item.speed = 0.0
+                        item.progress = 0.0
+                        item.downloaded_bytes = 0
+                        
+                        # Clean up temp file if we are switching formats or retrying fresh
+                        temp_path = item.target_path.with_suffix(item.target_path.suffix + ".part")
+                        with suppress(Exception):
+                            if temp_path.exists():
+                                temp_path.unlink()
+
+                        with self._lock:
+                            self._queue.append(item)
+                            self._has_items.set()
+                        self._notify(item, force=True)
             finally:
                 session.close()
 

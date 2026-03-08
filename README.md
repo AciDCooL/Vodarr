@@ -66,4 +66,3 @@ The project is organized into logical modules:
 - `downloader.py`: Core download logic and worker thread.
 - `web.py`: FastAPI routes and web-specific state management.
 - `config.py`: Persistent configuration and state handling.
-- `gui.py`: (Legacy) Tkinter desktop interface.

@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -19,6 +20,7 @@ from pydantic import BaseModel
 from .api import IPTVClient, APIError
 from .config import AppConfig, ConfigManager, QueueStateManager, COMMON_USER_AGENTS
 from .downloader import DownloadItem, DownloadManager
+from .cache import CacheManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,8 @@ app = FastAPI(title="IPTV VOD Downloader API")
 config_manager = ConfigManager()
 # queue_state_manager handles the persistent queue state
 queue_state_manager = QueueStateManager()
+# cache_manager handles SQLite caching of VOD lists
+cache_manager = CacheManager()
 # Global client and manager instances
 client: Optional[IPTVClient] = None
 download_manager: Optional[DownloadManager] = None
@@ -37,6 +41,38 @@ download_manager: Optional[DownloadManager] = None
 # In-memory mirror of the queue for fast API access
 # Key: queue_id (uuid), Value: Dict representation of the DownloadItem
 queue_items: Dict[str, Dict[str, Any]] = {}
+
+def get_items_from_provider(kind: str, category_id: str, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    """Fetches items from provider with SQLite caching and normalization."""
+    conf = config_manager.config
+    
+    if not force_refresh:
+        cached = cache_manager.get_items(kind, category_id, conf.cache_expiry_hours)
+        if cached is not None:
+            return cached
+            
+    c = get_client()
+    if kind == "movies":
+        raw_items = c.get_vod_streams(category_id=category_id)
+        # Normalize: ensure "cover" field exists (mapped from stream_icon)
+        items = []
+        for item in raw_items:
+            if "stream_icon" in item and "cover" not in item:
+                item["cover"] = item["stream_icon"]
+            items.append(item)
+    elif kind == "series":
+        raw_items = c.get_series(category_id=category_id)
+        # Normalize series if needed (though usually they have "cover")
+        items = []
+        for item in raw_items:
+            if "last_modified" in item: # Common in series payload
+                pass
+            items.append(item)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid kind")
+        
+    cache_manager.set_items(kind, category_id, items)
+    return items
 
 def get_client() -> IPTVClient:
     """
@@ -58,14 +94,29 @@ def get_client() -> IPTVClient:
         )
     return client
 
+_last_save_time = 0.0
+SAVE_INTERVAL = 5.0  # Save to disk at most every 5 seconds for progress updates
+
 def on_download_update(item: DownloadItem):
     """
     Callback triggered by DownloadManager whenever a download status, 
     progress, or speed changes.
     """
+    global _last_save_time
     queue_items[item.queue_id] = item.as_dict()
-    # Auto-save queue state to disk on every update
-    save_queue_state()
+    
+    # Force save on status change, otherwise throttle
+    now = time.time()
+    should_save = False
+    
+    if item.status in {"completed", "failed", "stopped", "removed", "cancelled"}:
+        should_save = True
+    elif now - _last_save_time > SAVE_INTERVAL:
+        should_save = True
+        
+    if should_save:
+        save_queue_state()
+        _last_save_time = now
 
 def save_queue_state():
     """Serializes the current non-deleted queue items to queue_state.json."""
@@ -74,6 +125,23 @@ def save_queue_state():
         if item.get("status") not in {"removed", "cancelled"}
     ]
     queue_state_manager.save_items(items)
+
+def build_item_url(item: DownloadItem) -> str:
+    """Rebuilds the stream URL using the LATEST credentials from config."""
+    conf = config_manager.config
+    base = conf.base_url.rstrip("/")
+    ext = item.meta.get("original_extension", "mp4")
+    
+    # If the URL was already rotated to a fallback during retry, preserve that format
+    if item.stream_url:
+        current_ext = item.stream_url.split(".")[-1]
+        if len(current_ext) <= 4:
+            ext = current_ext
+
+    if item.kind == "movie":
+        return f"{base}/movie/{conf.username}/{conf.password}/{item.item_id}.{ext}"
+    else:
+        return f"{base}/series/{conf.username}/{conf.password}/{item.item_id}.{ext}"
 
 def init_downloader():
     """
@@ -85,7 +153,13 @@ def init_downloader():
     if download_manager is None:
         download_manager = DownloadManager(
             callback=on_download_update,
-            user_agent=conf.user_agent
+            user_agent=conf.user_agent,
+            auto_retry=conf.auto_retry_failed,
+            max_retries=conf.max_retries,
+            retry_forever=conf.retry_forever,
+            retry_start_hour=conf.retry_start_hour,
+            retry_end_hour=conf.retry_end_hour,
+            url_builder=build_item_url
         )
         
         # Restore queue from persistent storage
@@ -106,6 +180,11 @@ def init_downloader():
                     meta=item_data.get("meta", {}),
                     queue_id=queue_id
                 )
+                # Force a URL refresh for restored items to ensure creds match
+                try:
+                    item.stream_url = build_item_url(item)
+                except Exception:
+                    pass
                 download_manager.add_items([item])
         
         download_manager.start()
@@ -124,6 +203,12 @@ class ConfigUpdate(BaseModel):
     password: Optional[str] = None
     download_dir: Optional[str] = None
     user_agent: Optional[str] = None
+    cache_expiry_hours: Optional[int] = None
+    auto_retry_failed: Optional[bool] = None
+    max_retries: Optional[int] = None
+    retry_forever: Optional[bool] = None
+    retry_start_hour: Optional[int] = None
+    retry_end_hour: Optional[int] = None
 
 class QueueAddRequest(BaseModel):
     """Payload for adding one or more items to the download queue."""
@@ -138,11 +223,19 @@ async def get_config():
 
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate):
-    """Updates configuration and signals the downloader to update its User-Agent."""
+    """Updates configuration and signals the downloader to update its settings."""
     config_manager.update(**update.dict(exclude_unset=True))
+    conf = config_manager.config
     if download_manager:
-        download_manager.update_user_agent(config_manager.config.user_agent)
-    return config_manager.config
+        download_manager.update_user_agent(conf.user_agent)
+        download_manager.update_retry_settings(
+            conf.auto_retry_failed, 
+            conf.max_retries,
+            conf.retry_forever,
+            conf.retry_start_hour,
+            conf.retry_end_hour
+        )
+    return conf
 
 @app.get("/api/common-user-agents")
 async def get_ua_presets():
@@ -160,31 +253,52 @@ async def test_connection():
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/categories/{kind}")
-async def get_categories(kind: str):
-    """Fetches VOD or Series categories from the provider."""
-    c = get_client()
+async def get_categories(kind: str, refresh: bool = False):
+    """Fetches VOD or Series categories from the provider with caching."""
+    conf = config_manager.config
     try:
+        if not refresh:
+            cached = cache_manager.get_categories(kind, conf.cache_expiry_hours)
+            if cached is not None:
+                return cached
+
+        c = get_client()
         if kind == "movies":
-            return c.get_vod_categories()
+            cats = c.get_vod_categories()
         elif kind == "series":
-            return c.get_series_categories()
+            cats = c.get_series_categories()
         else:
             raise HTTPException(status_code=400, detail="Invalid kind")
+        
+        cache_manager.set_categories(kind, cats)
+        return cats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/items/{kind}/{category_id}")
-async def get_items(kind: str, category_id: str):
-    """Fetches items (Movies or Series) for a specific category."""
-    c = get_client()
+async def get_items(kind: str, category_id: str, search: Optional[str] = None, offset: int = 0, limit: int = 50, refresh: bool = False):
+    """Fetches items (Movies or Series) for a specific category with search, pagination and optional refresh."""
     try:
-        if kind == "movies":
-            return c.get_vod_streams(category_id=category_id)
-        elif kind == "series":
-            return c.get_series(category_id=category_id)
+        all_items = get_items_from_provider(kind, category_id, force_refresh=refresh)
+        
+        # Apply search filter
+        if search:
+            search_query = search.lower()
+            filtered_items = [i for i in all_items if search_query in i.get("name", "").lower()]
         else:
-            raise HTTPException(status_code=400, detail="Invalid kind")
+            filtered_items = all_items
+            
+        total = len(filtered_items)
+        paginated = filtered_items[offset : offset + limit]
+        
+        return {
+            "total": total,
+            "items": paginated,
+            "offset": offset,
+            "limit": limit
+        }
     except Exception as e:
+        logger.exception("Failed to fetch items")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/series/{series_id}")
@@ -209,13 +323,21 @@ async def add_to_queue(request: QueueAddRequest):
     
     new_items = []
     for data in request.items:
+        # Extract original extension for dynamic URL building
+        stream_url = data["stream_url"]
+        original_ext = stream_url.split(".")[-1] if "." in stream_url else "mp4"
+        if len(original_ext) > 4: original_ext = "mp4" # Sanity check
+        
+        meta = data.get("meta", {})
+        meta["original_extension"] = original_ext
+        
         item = DownloadItem(
             item_id=str(data["item_id"]),
             title=data["title"],
-            stream_url=data["stream_url"],
+            stream_url=stream_url,
             target_path=Path(data["target_path"]),
             kind=data.get("kind", "movie"),
-            meta=data.get("meta", {})
+            meta=meta
         )
         new_items.append(item)
         queue_items[item.queue_id] = item.as_dict()
@@ -243,9 +365,50 @@ async def control_queue(action: str):
         for qid in to_remove:
             queue_items.pop(qid, None)
         save_queue_state()
+    elif action == "clear-all":
+        download_manager.stop_all()
+        queue_items.clear()
+        save_queue_state()
+    elif action == "restart-failed":
+        failed_items = [item for item in queue_items.values() if item.get("status") == "failed"]
+        for item_data in failed_items:
+            queue_id = item_data["queue_id"]
+            # Re-create DownloadItem object to pass to manager
+            item = DownloadItem(
+                item_id=str(item_data["item_id"]),
+                title=item_data["title"],
+                stream_url=item_data["stream_url"],
+                target_path=Path(item_data["target_path"]),
+                kind=item_data.get("kind", "movie"),
+                meta=item_data.get("meta", {}),
+                queue_id=queue_id
+            )
+            download_manager.restart_item(item)
     else:
         raise HTTPException(status_code=400, detail="Invalid action")
     
+    return {"status": "success"}
+
+@app.post("/api/queue/restart/{queue_id}")
+async def restart_item(queue_id: str):
+    """Restarts a failed or stopped download."""
+    if not download_manager:
+        raise HTTPException(status_code=500, detail="Downloader not initialized")
+    
+    item_data = queue_items.get(queue_id)
+    if not item_data:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    item = DownloadItem(
+        item_id=str(item_data["item_id"]),
+        title=item_data["title"],
+        stream_url=item_data["stream_url"],
+        target_path=Path(item_data["target_path"]),
+        kind=item_data.get("kind", "movie"),
+        meta=item_data.get("meta", {}),
+        queue_id=queue_id
+    )
+    download_manager.restart_item(item)
     return {"status": "success"}
 
 @app.delete("/api/queue/{queue_id}")
