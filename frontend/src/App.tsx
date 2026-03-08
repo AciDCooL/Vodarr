@@ -1181,23 +1181,6 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex bg-gray-100 dark:bg-gray-800/50 rounded-[1.5rem] p-1.5 border dark:border-gray-800">
-            <button 
-              onClick={() => setActiveTab('movies')}
-              title="Browse Movies"
-              className={`flex items-center gap-2 px-6 py-2 rounded-2xl transition-all ${activeTab === 'movies' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] tracking-widest' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-black uppercase text-[10px] tracking-widest'}`}
-            >
-              <Film size={16}/> Movies
-            </button>
-            <button 
-              onClick={() => setActiveTab('series')}
-              title="Browse TV Series"
-              className={`flex items-center gap-2 px-6 py-2 rounded-2xl transition-all ${activeTab === 'series' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] tracking-widest' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-black uppercase text-[10px] tracking-widest'}`}
-            >
-              <Tv size={16}/> Series
-            </button>
-          </div>
-
           <div className="flex items-center gap-2 pl-2">
             <button 
               onClick={handleManualRefresh} 
@@ -1259,7 +1242,23 @@ export default function App() {
       <main className="flex flex-1 overflow-hidden">
         {/* SIDEBAR */}
         <aside className="w-72 bg-white dark:bg-gray-900 border-r dark:border-gray-800 flex flex-col shadow-sm z-10">
-          <div className="p-6 border-b dark:border-gray-800 flex flex-col gap-4 bg-gray-50/50 dark:bg-gray-900/50">
+          <div className="p-6 border-b dark:border-gray-800 flex flex-col gap-6 bg-gray-50/50 dark:bg-gray-900/50">
+            {/* Tab Switcher (Moved here) */}
+            <div className="flex bg-gray-200/50 dark:bg-gray-800/50 rounded-2xl p-1.5 border dark:border-gray-700 shadow-inner">
+              <button 
+                onClick={() => setActiveTab('movies')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[1.25rem] transition-all ${activeTab === 'movies' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] tracking-widest' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-black uppercase text-[10px] tracking-widest'}`}
+              >
+                <Film size={14}/> Movies
+              </button>
+              <button 
+                onClick={() => setActiveTab('series')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[1.25rem] transition-all ${activeTab === 'series' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] tracking-widest' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-black uppercase text-[10px] tracking-widest'}`}
+              >
+                <Tv size={14}/> Series
+              </button>
+            </div>
+
             <div className="relative">
               <Search size={16} className="absolute left-4 top-3.5 text-gray-400" />
               <input 
