@@ -18,9 +18,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from .api import IPTVClient, APIError
-from .config import AppConfig, ConfigManager, QueueStateManager, COMMON_USER_AGENTS
+from .config import AppConfig, COMMON_USER_AGENTS
 from .downloader import DownloadItem, DownloadManager
-from .cache import CacheManager
+from .cache import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -28,26 +28,43 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Vodarr API")
 
 # --- Global State Management ---
-# config_manager handles loading/saving settings to config.json
-config_manager = ConfigManager()
-# queue_state_manager handles the persistent queue state
-queue_state_manager = QueueStateManager()
-# cache_manager handles SQLite caching of VOD lists
-cache_manager = CacheManager()
+# unified database manager for cache, config, and queue
+db = DatabaseManager()
+
 # Global client and manager instances
 client: Optional[IPTVClient] = None
 download_manager: Optional[DownloadManager] = None
 
+# Current config instance
+current_config = AppConfig()
+
+def load_app_config():
+    """Loads configuration from database and merges with environment defaults."""
+    global current_config
+    stored = db.get_config()
+    if stored:
+        # Filter valid keys for AppConfig
+        from dataclasses import asdict
+        valid_keys = asdict(AppConfig()).keys()
+        filtered = {k: v for k, v in stored.items() if k in valid_keys}
+        
+        # Merge stored data into default config
+        data = asdict(current_config)
+        data.update(filtered)
+        current_config = AppConfig(**data)
+
+# Initial load
+load_app_config()
+
 # In-memory mirror of the queue for fast API access
-# Key: queue_id (uuid), Value: Dict representation of the DownloadItem
 queue_items: Dict[str, Dict[str, Any]] = {}
 
 def get_items_from_provider(kind: str, category_id: str, force_refresh: bool = False) -> List[Dict[str, Any]]:
     """Fetches items from provider with SQLite caching and normalization."""
-    conf = config_manager.config
+    conf = current_config
     
     if not force_refresh:
-        cached = cache_manager.get_items(kind, category_id, conf.cache_expiry_hours)
+        cached = db.get_items(kind, category_id, conf.cache_expiry_hours)
         if cached is not None:
             return cached
             
@@ -71,7 +88,7 @@ def get_items_from_provider(kind: str, category_id: str, force_refresh: bool = F
     else:
         raise HTTPException(status_code=400, detail="Invalid kind")
         
-    cache_manager.set_items(kind, category_id, items)
+    db.set_items(kind, category_id, items)
     return items
 
 def get_client() -> IPTVClient:
@@ -80,7 +97,7 @@ def get_client() -> IPTVClient:
     Ensures the client always uses the latest credentials from config.
     """
     global client
-    conf = config_manager.config
+    conf = current_config
     if not conf.is_complete():
         raise HTTPException(status_code=400, detail="Configuration is incomplete")
     
@@ -119,16 +136,16 @@ def on_download_update(item: DownloadItem):
         _last_save_time = now
 
 def save_queue_state():
-    """Serializes the current non-deleted queue items to queue_state.json."""
+    """Serializes the current non-deleted queue items to the database."""
     items = [
         item for item in queue_items.values() 
         if item.get("status") not in {"removed", "cancelled"}
     ]
-    queue_state_manager.save_items(items)
+    db.save_queue(items)
 
 def build_item_url(item: DownloadItem) -> str:
     """Rebuilds the stream URL using the LATEST credentials from config."""
-    conf = config_manager.config
+    conf = current_config
     base = conf.base_url.rstrip("/")
     ext = item.meta.get("original_extension", "mp4")
     
@@ -145,11 +162,11 @@ def build_item_url(item: DownloadItem) -> str:
 
 def init_downloader():
     """
-    Initializes the DownloadManager and restores the queue from disk
+    Initializes the DownloadManager and restores the queue from database
     upon application startup.
     """
     global download_manager
-    conf = config_manager.config
+    conf = current_config
     if download_manager is None:
         download_manager = DownloadManager(
             callback=on_download_update,
@@ -162,8 +179,8 @@ def init_downloader():
             url_builder=build_item_url
         )
         
-        # Restore queue from persistent storage
-        for item_data in queue_state_manager.load_items():
+        # Restore queue from database
+        for item_data in db.get_queue():
             queue_id = item_data.get("queue_id")
             if not queue_id: continue
             queue_items[queue_id] = item_data
@@ -220,15 +237,26 @@ class QueueAddRequest(BaseModel):
 async def get_config():
     """Returns the current application configuration."""
     from dataclasses import asdict
-    data = asdict(config_manager.config)
-    data["is_complete"] = config_manager.config.is_complete()
+    data = asdict(current_config)
+    data["is_complete"] = current_config.is_complete()
     return data
 
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate):
     """Updates configuration and signals the downloader to update its settings."""
-    config_manager.update(**update.dict(exclude_unset=True))
-    conf = config_manager.config
+    from dataclasses import asdict
+    update_data = update.dict(exclude_unset=True)
+    
+    # Save to database
+    db.save_config(update_data)
+    
+    # Update current runtime config
+    data = asdict(current_config)
+    data.update(update_data)
+    global current_config
+    current_config = AppConfig(**data)
+    
+    conf = current_config
     if download_manager:
         download_manager.update_user_agent(conf.user_agent)
         download_manager.update_retry_settings(
@@ -239,10 +267,9 @@ async def update_config(update: ConfigUpdate):
             conf.retry_end_hour
         )
     
-    from dataclasses import asdict
-    data = asdict(conf)
-    data["is_complete"] = conf.is_complete()
-    return data
+    resp_data = asdict(conf)
+    resp_data["is_complete"] = conf.is_complete()
+    return resp_data
 
 @app.get("/api/common-user-agents")
 async def get_ua_presets():
