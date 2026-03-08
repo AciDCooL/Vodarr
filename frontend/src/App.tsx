@@ -239,6 +239,15 @@ const formatSpeed = (bps: number) => {
   return `${formatSize(bps)}/s`;
 };
 
+const formatETA = (seconds: number) => {
+  if (seconds <= 0 || !isFinite(seconds)) return '';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins}m ${Math.round(seconds % 60)}s`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}h ${mins % 60}m`;
+};
+
 const sanitiseFilename = (name: string): string => {
   if (!name) return '';
   return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim();
@@ -1421,6 +1430,12 @@ export default function App() {
   };
 
   const totalSpeed = queue.reduce((acc, item) => acc + (item.status === 'downloading' ? item.speed : 0), 0);
+  const totalRemainingBytes = queue.reduce((acc, item) => {
+    if (item.status === 'completed') return acc;
+    const remaining = (item.total_size || 0) - (item.downloaded_bytes || 0);
+    return acc + Math.max(0, remaining);
+  }, 0);
+  const globalETA = totalSpeed > 0 ? totalRemainingBytes / totalSpeed : 0;
 
   if (config && !config.is_complete) {
     return (
@@ -1770,11 +1785,21 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-green-100 dark:bg-green-900/30 px-4 py-1.5 rounded-full flex items-center gap-3 shadow-inner" title="Combined bandwidth">
+            <div className="bg-green-100 dark:bg-green-900/30 px-4 py-1.5 rounded-full flex items-center gap-3 shadow-inner" title="Combined bandwidth and ETA">
               <div className={`w-2 h-2 rounded-full bg-green-500 ${totalSpeed > 0 ? 'animate-pulse' : ''}`}/>
-              <span className="text-xs font-black text-green-700 dark:text-green-400 tabular-nums">
-                {formatSpeed(totalSpeed) || '0 B/s'}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-black text-green-700 dark:text-green-400 tabular-nums">
+                  {formatSpeed(totalSpeed) || '0 B/s'}
+                </span>
+                {totalSpeed > 0 && globalETA > 0 && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-green-300 dark:bg-green-700"/>
+                    <span className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest">
+                      ETA: {formatETA(globalETA)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -1814,12 +1839,25 @@ export default function App() {
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.kind}</span>
                   </td>
                   <td className="px-8 py-3">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${
-                      item.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                      item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                      item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                    }`}>{item.status}</span>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${
+                        item.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                        item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                        item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                        'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                      }`}>{item.status}</span>
+                      
+                      {item.status === 'downloading' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 tabular-nums">{formatSpeed(item.speed)}</span>
+                          <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"/>
+                          <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
+                            {formatETA((item.total_size - item.downloaded_bytes) / item.speed)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {item.error && <p className="text-[10px] font-bold text-red-500 mt-2 max-w-xs">{item.error}</p>}
                   </td>
                   <td className="px-8 py-3">
                     <div className="flex items-center gap-4">
