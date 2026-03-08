@@ -1,5 +1,5 @@
 {
-  "name": "iptv-vod-downloader-frontend",
+  "name": "vodarr-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
