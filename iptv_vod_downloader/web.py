@@ -442,8 +442,14 @@ async def add_to_queue(request: QueueAddRequest):
         original_ext = stream_url.split(".")[-1] if "." in stream_url else "mp4"
         if len(original_ext) > 4: original_ext = "mp4" # Sanity check
         
+        # Add format fallbacks for auto-retry
+        fallbacks = ["mkv", "mp4", "avi"]
+        if original_ext in fallbacks:
+            fallbacks.remove(original_ext)
+
         meta = data.get("meta", {})
         meta["original_extension"] = original_ext
+        meta["fallbacks"] = fallbacks
         
         item = DownloadItem(
             item_id=str(data["item_id"]),
