@@ -1057,7 +1057,15 @@ function EpisodeSelectorModal({
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden border dark:border-gray-800 flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-8 border-b dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-6">
-            {series.cover && <img src={series.cover} className="w-16 h-24 object-cover rounded-2xl shadow-xl border-2 border-white dark:border-gray-700 bg-gray-200 dark:bg-gray-700" />}
+            <div className="w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded-2xl overflow-hidden shadow-xl border-2 border-white dark:border-gray-700 flex-shrink-0">
+              <SafeImage 
+                src={series.cover} 
+                className="w-full h-full object-cover" 
+                alt=""
+                fallbackIcon={Tv}
+                iconSize={32}
+              />
+            </div>
             <div>
               <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none">{series.name}</h2>
               <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mt-2">Episode Selection</p>
