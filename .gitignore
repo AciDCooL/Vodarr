@@ -17,3 +17,8 @@ release/
 .env.*
 .idea/
 .vscode/
+
+# Frontend
+frontend/node_modules/
+frontend/.env
+frontend/.env.*
