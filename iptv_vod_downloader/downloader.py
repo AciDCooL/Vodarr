@@ -249,13 +249,15 @@ class DownloadManager:
             
             # Check for download window BEFORE picking up an item
             if not self._is_in_download_window():
-                # Notify UI if we have a current item, otherwise just wait
-                if self._current_item:
-                    self._current_item.status = "queued"
-                    self._current_item.error = f"Waiting for download window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
-                    self._notify(self._current_item, force=True)
+                # Update the status of the first item in the queue to show why we are waiting
+                with self._lock:
+                    if self._queue:
+                        wait_item = self._queue[0]
+                        wait_item.status = "queued"
+                        wait_item.error = f"Waiting for download window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
+                        self._notify(wait_item, force=True)
                 
-                time.sleep(60) # Wait a minute before checking window again
+                time.sleep(5) # Check every 5 seconds for the window to open
                 continue
 
             item = self._next_item()
@@ -419,13 +421,21 @@ class DownloadManager:
                             if item.queue_id in self._cancelled_queue_ids:
                                 raise DownloadCancelled("Download cancelled by user.")
                             
-                            while self._paused and not self._stop_event.is_set():
+                            # Check window and pause state
+                            while (self._paused or not self._is_in_download_window()) and not self._stop_event.is_set():
                                 if item.queue_id in self._cancelled_queue_ids:
                                     raise DownloadCancelled("Download cancelled by user.")
-                                item.status = "paused"
+                                
+                                if not self._is_in_download_window():
+                                    item.status = "queued"
+                                    item.error = f"Paused: Outside download window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
+                                else:
+                                    item.status = "paused"
+                                    item.error = None
+                                    
                                 item.speed = 0.0
                                 self._notify(item)
-                                self._pause_event.wait(timeout=0.2)
+                                self._pause_event.wait(timeout=1.0)
                             
                             if item.status == "paused" and not self._paused:
                                 item.status = "downloading"
