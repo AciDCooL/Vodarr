@@ -348,10 +348,10 @@ async def shutdown_system():
 @app.get("/api/categories/{kind}")
 async def get_categories(kind: str, refresh: bool = False):
     """Fetches VOD or Series categories from the provider with caching."""
-    conf = config_manager.config
+    conf = current_config
     try:
         if not refresh:
-            cached = cache_manager.get_categories(kind, conf.cache_expiry_hours)
+            cached = db.get_categories(kind, conf.cache_expiry_hours)
             if cached is not None:
                 return cached
 
