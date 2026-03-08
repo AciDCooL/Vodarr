@@ -1735,34 +1735,34 @@ export default function App() {
             <tbody className="divide-y dark:divide-gray-800">
               {queue.map(item => (
                 <tr key={item.queue_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group">
-                  <td className="px-8 py-4">
+                  <td className="px-8 py-3">
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-black text-gray-800 dark:text-gray-100 truncate max-w-md uppercase tracking-tight" title={item.title}>{item.title}</span>
-                      {item.retries > 0 && <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest mt-1">Recovery Cycle {item.retries}{config?.retry_forever ? '' : `/${config?.max_retries}`}</span>}
+                      <span className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.title}>{item.title}</span>
+                      {item.retries > 0 && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-0.5">Recovery Cycle {item.retries}{config?.retry_forever ? '' : `/${config?.max_retries}`}</span>}
                     </div>
                   </td>
-                  <td className="px-8 py-4">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.kind}</span>
+                  <td className="px-8 py-3">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.kind}</span>
                   </td>
-                  <td className="px-8 py-4">
-                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm ${
+                  <td className="px-8 py-3">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${
                       item.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                       item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                       item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                       'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                     }`}>{item.status}</span>
                   </td>
-                  <td className="px-8 py-4">
+                  <td className="px-8 py-3">
                     <div className="flex items-center gap-4">
-                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden border dark:border-gray-700 shadow-inner">
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden border dark:border-gray-700 shadow-inner">
                         <div className={`h-full transition-all duration-500 shadow-lg ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600 dark:bg-blue-500'}`} style={{ width: `${item.progress * 100}%` }}/>
                       </div>
-                      <span className="text-[11px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
+                      <span className="text-[10px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
                         {Math.round(item.progress * 100)}%
                       </span>
                     </div>
                   </td>
-                  <td className="px-8 py-4 text-center">
+                  <td className="px-8 py-3 text-center">
                     <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {(item.status === 'failed' || item.status === 'stopped') && (
                         <button onClick={() => api.restartItem(item.queue_id)} title="Retry" className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"><RefreshCw size={14}/></button>
