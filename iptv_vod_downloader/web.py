@@ -25,7 +25,7 @@ from .cache import CacheManager
 logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
-app = FastAPI(title="IPTV VOD Downloader API")
+app = FastAPI(title="Vodarr API")
 
 # --- Global State Management ---
 # config_manager handles loading/saving settings to config.json
