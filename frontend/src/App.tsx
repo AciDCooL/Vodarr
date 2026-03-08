@@ -5,7 +5,7 @@ import {
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, Info,
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
-  LayoutGrid, List, AlignJustify
+  LayoutGrid, List, AlignJustify, Power, Star, Calendar
 } from 'lucide-react';
 
 /**
@@ -1158,7 +1158,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [selectedSeries, setSelectedSeries] = useState<Item | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [catFilter, setCatFilter] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
@@ -1700,7 +1699,7 @@ export default function App() {
         <div className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-3">
-              <Download size={20} className="text-blue-600"/> Queue Pipeline
+              <Download size={20} className="text-blue-600"/> Queue
             </h3>
             <div className="bg-green-100 dark:bg-green-900/30 px-4 py-1.5 rounded-full flex items-center gap-3 shadow-inner" title="Combined bandwidth">
               <div className={`w-2 h-2 rounded-full bg-green-500 ${totalSpeed > 0 ? 'animate-pulse' : ''}`}/>
@@ -1726,10 +1725,9 @@ export default function App() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Object Title</th>
+                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Title</th>
                 <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Class</th>
                 <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
-                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Bandwidth</th>
                 <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Completion</th>
                 <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-24 text-center">Ops</th>
               </tr>
@@ -1754,7 +1752,6 @@ export default function App() {
                       'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                     }`}>{item.status}</span>
                   </td>
-                  <td className="px-8 py-4 font-mono text-[11px] text-blue-600 dark:text-blue-400 font-bold tabular-nums">{formatSpeed(item.speed)}</td>
                   <td className="px-8 py-4">
                     <div className="flex items-center gap-4">
                       <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden border dark:border-gray-700 shadow-inner">
@@ -1777,7 +1774,7 @@ export default function App() {
               ))}
               {queue.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-8 py-16 text-center text-gray-400 dark:text-gray-600">
+                  <td colSpan={5} className="px-8 py-16 text-center text-gray-400 dark:text-gray-600">
                     <Info size={48} className="mx-auto mb-4 opacity-10" strokeWidth={1}/>
                     <p className="font-black uppercase tracking-[0.3em] text-[10px]">Pipeline Empty</p>
                   </td>
