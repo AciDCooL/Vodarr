@@ -1,8 +1,9 @@
 import logging
 import sys
+import argparse
+import uvicorn
 
 from iptv_vod_downloader.config import CONFIG_DIR
-from iptv_vod_downloader.gui import run_app
 
 
 def configure_logging() -> None:
@@ -15,8 +16,22 @@ def configure_logging() -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="IPTV VOD Downloader")
+    parser.add_argument("--headless", action="store_true", help="Run without GUI (web mode)")
+    parser.add_argument("--port", type=int, default=6767, help="Web server port (default: 6767)")
+    args = parser.parse_args()
+
     configure_logging()
-    try:
-        run_app()
-    except KeyboardInterrupt:
-        sys.exit(130)
+    
+    if args.headless:
+        print(f"Starting web server on port {args.port}...")
+        uvicorn.run("iptv_vod_downloader.web:app", host="0.0.0.0", port=args.port, log_level="info")
+    else:
+        try:
+            from iptv_vod_downloader.gui import run_app
+            run_app()
+        except ImportError:
+            print("Error: GUI dependencies not found. Please run with --headless")
+            sys.exit(1)
+        except KeyboardInterrupt:
+            sys.exit(130)

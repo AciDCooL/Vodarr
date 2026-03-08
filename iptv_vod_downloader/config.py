@@ -1,31 +1,37 @@
-"""Configuration helpers and persisted UI state for the IPTV VOD downloader."""
+"""Configuration helpers and persisted state for the IPTV VOD downloader."""
 
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, List
 
-CONFIG_DIR = Path.home() / ".iptv_vod_downloader"
+# Docker-friendly defaults
+def get_default_config_dir() -> Path:
+    if os.path.exists("/config"):
+        return Path("/config")
+    return Path.home() / ".iptv_vod_downloader"
+
+CONFIG_DIR = get_default_config_dir()
 CONFIG_FILE = CONFIG_DIR / "config.json"
 QUEUE_STATE_FILE = CONFIG_DIR / "queue_state.json"
-UI_STATE_FILE = CONFIG_DIR / "ui_state.json"
-
 
 @dataclass
 class AppConfig:
     """Serializable application configuration."""
 
-    base_url: str = ""
-    username: str = ""
-    password: str = ""
-    download_dir: str = str(Path.home() / "Downloads" / "IPTV-VOD")
-    user_agent: str = (
+    base_url: str = os.getenv("IPTV_BASE_URL", "")
+    username: str = os.getenv("IPTV_USERNAME", "")
+    password: str = os.getenv("IPTV_PASSWORD", "")
+    download_dir: str = os.getenv("IPTV_DOWNLOAD_DIR", "/downloads" if os.path.exists("/downloads") else str(Path.home() / "Downloads" / "IPTV-VOD"))
+    user_agent: str = os.getenv("IPTV_USER_AGENT", (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/118.0.5993.70 Safari/537.36"
-    )
+    ))
+    web_port: int = int(os.getenv("IPTV_PORT", "6767"))
 
     def is_complete(self) -> bool:
         """Return True when the configuration looks usable."""
@@ -66,20 +72,29 @@ class ConfigManager:
 
     def load(self) -> AppConfig:
         if not self.path.exists():
-            self._config = AppConfig()
+            # If file doesn't exist, we still have env defaults in self._config
             return self._config
 
         try:
             with self.path.open("r", encoding="utf-8") as fh:
                 raw: Dict[str, Any] = json.load(fh)
         except (json.JSONDecodeError, OSError):
-            self._config = AppConfig()
             return self._config
 
         # Filter out unknown keys to prevent TypeError on dataclass init
         valid_keys = asdict(AppConfig()).keys()
         filtered = {k: v for k, v in raw.items() if k in valid_keys}
-        self._config = AppConfig(**{**asdict(AppConfig()), **filtered})
+        
+        # Merge: File values override Env defaults, but Env vars (if set explicitly) 
+        # should probably override file. For simplicity, let's just use file values
+        # if they exist, but if they are empty strings and env has values, use env.
+        
+        current_data = asdict(self._config)
+        for k, v in filtered.items():
+            if v: # Only override if not empty in file
+                current_data[k] = v
+        
+        self._config = AppConfig(**current_data)
         return self._config
 
     def save(self, config: AppConfig | None = None) -> None:
@@ -97,16 +112,6 @@ class ConfigManager:
         self._config = AppConfig(**data)
         self.save()
         return self._config
-
-
-@dataclass
-class WindowState:
-    """Persisted window and UI preferences."""
-
-    geometry: str = "1200x800"
-    selected_tab: str = "movies"
-    queue_filter: str = "All"
-    queue_sort: str = "Insertion order"
 
 
 class JSONStateManager:
@@ -142,22 +147,3 @@ class QueueStateManager(JSONStateManager):
 
     def save_items(self, items: List[Dict[str, Any]]) -> None:
         self.save(items)
-
-
-class UIStateManager(JSONStateManager):
-    """Persist window geometry and simple UI preferences."""
-
-    def __init__(self, path: Path = UI_STATE_FILE) -> None:
-        super().__init__(path)
-
-    def load_state(self) -> WindowState:
-        data = self.load(default={})
-        if not isinstance(data, dict):
-            return WindowState()
-        # Filter out unknown keys to prevent TypeError on dataclass init
-        valid_keys = asdict(WindowState()).keys()
-        filtered = {k: v for k, v in data.items() if k in valid_keys}
-        return WindowState(**{**asdict(WindowState()), **filtered})
-
-    def save_state(self, state: WindowState) -> None:
-        self.save(asdict(state))

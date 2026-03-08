@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  iptv-downloader:
+    build: .
+    container_name: iptv-vod-downloader
+    ports:
+      - "6767:6767"
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+    environment:
+      - IPTV_PORT=6767
+      - IPTV_BASE_URL=
+      - IPTV_USERNAME=
+      - IPTV_PASSWORD=
+    restart: unless-stopped
