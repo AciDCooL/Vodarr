@@ -297,6 +297,27 @@ async def test_connection():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/api/system/restart")
+async def restart_system():
+    """Restarts the application by exiting the process (Kubernetes will restart the container)."""
+    logger.info("Restart requested by user...")
+    # Schedule exit after a short delay to allow response to reach client
+    async def shutdown():
+        await asyncio.sleep(1)
+        os._exit(0)
+    asyncio.create_task(shutdown())
+    return {"message": "Restarting..."}
+
+@app.post("/api/system/shutdown")
+async def shutdown_system():
+    """Shuts down the application process."""
+    logger.info("Shutdown requested by user...")
+    async def shutdown():
+        await asyncio.sleep(1)
+        os._exit(0)
+    asyncio.create_task(shutdown())
+    return {"message": "Shutting down..."}
+
 @app.get("/api/categories/{kind}")
 async def get_categories(kind: str, refresh: bool = False):
     """Fetches VOD or Series categories from the provider with caching."""

@@ -117,6 +117,8 @@ const api = {
   controlQueue: (action: string) => fetch(`/api/queue/control/${action}`, { method: 'POST' }).then(r => r.json()),
   removeFromQueue: (queueId: string) => fetch(`/api/queue/${queueId}`, { method: 'DELETE' }).then(r => r.json()),
   restartItem: (queueId: string) => fetch(`/api/queue/restart/${queueId}`, { method: 'POST' }).then(r => r.json()),
+  restartSystem: () => fetch('/api/system/restart', { method: 'POST' }).then(r => r.json()),
+  shutdownSystem: () => fetch('/api/system/shutdown', { method: 'POST' }).then(r => r.json()),
 };
 
 // --- Custom UI Components ---
@@ -413,7 +415,7 @@ function SettingsModal({
   uaPresets: Record<string, string>,
   onTest: () => void
 }) {
-  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'automation'>('server');
+  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'automation' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   if (!config) return null;
 
@@ -421,6 +423,7 @@ function SettingsModal({
     { id: 'server', label: 'Server & API', icon: <Server size={18} /> },
     { id: 'downloads', label: 'Downloads', icon: <HardDrive size={18} /> },
     { id: 'automation', label: 'Retry & Automation', icon: <Zap size={18} /> },
+    { id: 'system', label: 'System', icon: <Power size={18} /> },
   ] as const;
 
   return (
@@ -664,6 +667,53 @@ function SettingsModal({
                       Downloads will only be active between these hours. Set 00:00 to 24:00 for no restriction.
                     </p>
                   </div>                </div>
+              </div>
+            )}
+
+            {activeGroup === 'system' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">System Maintenance</h3>
+                  <p className="text-sm text-gray-500">Manage the application lifecycle and process.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="p-6 bg-gray-50 dark:bg-gray-800/40 rounded-[2rem] border dark:border-gray-800 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600">
+                        <RefreshCw size={24} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Restart Application</h4>
+                        <p className="text-xs text-gray-500">Exits the process. In Docker/K8s, the container will restart automatically.</p>
+                      </div>
+                      <button 
+                        onClick={() => api.restartSystem()}
+                        className="px-6 py-2.5 bg-amber-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-700 transition-all active:scale-95"
+                      >
+                        Restart
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-red-50 dark:bg-red-900/10 rounded-[2rem] border border-red-100 dark:border-red-900/20 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600">
+                        <Power size={24} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-black dark:text-white uppercase tracking-tight text-sm text-red-600">Shut Down</h4>
+                        <p className="text-xs text-gray-500">Stops the application process immediately.</p>
+                      </div>
+                      <button 
+                        onClick={() => api.shutdownSystem()}
+                        className="px-6 py-2.5 bg-red-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-500/20"
+                      >
+                        Shutdown
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
