@@ -785,6 +785,11 @@ function ItemDetailsModal({
             src={item.cover} 
             className="w-full h-full object-cover" 
             alt={item.name}
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = ''; 
+              (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100 dark:bg-gray-800"><svg class="lucide lucide-image-off" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="14.5" x2="14.5" y1="14.5" y2="14.5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="3 16 9 10 11 12"/><polyline points="16 16 18 14 21 17"/></svg></div>';
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden" />
           <button 
@@ -1605,7 +1610,17 @@ export default function App() {
                           className="aspect-[2/3] rounded-[1.5rem] overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-lg border-2 border-white dark:border-gray-800 transition-all group-hover:scale-[1.03] group-hover:shadow-blue-500/20 group-hover:border-blue-500/50 cursor-pointer"
                         >
                           {item.cover ? (
-                            <img src={item.cover} alt="" className="w-full h-full object-cover" loading="lazy" />
+                            <img 
+                              src={item.cover} 
+                              alt="" 
+                              className="w-full h-full object-cover" 
+                              loading="lazy" 
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = ''; 
+                                (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><svg class="lucide lucide-image-off" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="14.5" x2="14.5" y1="14.5" y2="14.5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="3 16 9 10 11 12"/><polyline points="16 16 18 14 21 17"/></svg></div>';
+                              }}
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-gray-400">
                               {activeTab === 'movies' ? <Film size={32}/> : <Tv size={32}/>}
@@ -1639,7 +1654,17 @@ export default function App() {
                         <div className="flex items-center gap-6 flex-1 min-w-0">
                           <div className="w-12 h-16 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border-2 border-white dark:border-gray-800">
                             {item.cover ? (
-                              <img src={item.cover} alt="" className="w-full h-full object-cover" loading="lazy" />
+                              <img 
+                                src={item.cover} 
+                                alt="" 
+                                className="w-full h-full object-cover" 
+                                loading="lazy" 
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = ''; 
+                                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400"><svg class="lucide lucide-image-off" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="14.5" x2="14.5" y1="14.5" y2="14.5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="3 16 9 10 11 12"/><polyline points="16 16 18 14 21 17"/></svg></div>';
+                                }}
+                              />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-gray-400">
                                 {activeTab === 'movies' ? <Film size={20}/> : <Tv size={20}/>}
