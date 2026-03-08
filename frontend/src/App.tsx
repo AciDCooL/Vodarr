@@ -27,6 +27,7 @@ interface Config {
   retry_forever: boolean;
   retry_start_hour: number;
   retry_end_hour: number;
+  is_complete: boolean;
 }
 
 interface Category {
@@ -189,6 +190,97 @@ const sanitiseFilename = (name: string): string => {
   if (!name) return '';
   return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim();
 };
+
+// --- Setup Wizard Component ---
+
+function SetupWizard({ 
+  config, 
+  setConfig, 
+  onSave
+}: { 
+  config: Config | null, 
+  setConfig: (c: Config) => void, 
+  onSave: () => void
+}) {
+  if (!config) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-100 dark:bg-gray-950 z-[200] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden border dark:border-gray-800 animate-in fade-in zoom-in-95 duration-500">
+        <div className="p-12 space-y-10">
+          <div className="text-center space-y-4">
+            <div className="bg-blue-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/40 rotate-3">
+              <Zap className="text-white" size={40} strokeWidth={2.5}/>
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">Welcome to Vodarr</h2>
+              <p className="text-gray-500 font-medium">To get started, please connect your Xtream API provider.</p>
+            </div>
+          </div>
+
+          <div className="grid gap-8">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Server URL</label>
+              <div className="relative group">
+                <Globe className="absolute left-5 top-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={20}/>
+                <input 
+                  className="w-full border-none rounded-2xl px-14 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-lg"
+                  placeholder="http://your-provider.com:8080"
+                  value={config.base_url} 
+                  onChange={e => setConfig({...config, base_url: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Username</label>
+                <input 
+                  className="w-full border-none rounded-2xl px-6 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-lg"
+                  placeholder="user123"
+                  value={config.username} 
+                  onChange={e => setConfig({...config, username: e.target.value})}
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Password</label>
+                <input 
+                  type="password"
+                  className="w-full border-none rounded-2xl px-6 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-lg"
+                  placeholder="••••••••"
+                  value={config.password} 
+                  onChange={e => setConfig({...config, password: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Download Directory</label>
+              <div className="relative group">
+                <Folder className="absolute left-5 top-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={20}/>
+                <input 
+                  className="w-full border-none rounded-2xl px-14 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold"
+                  value={config.download_dir} 
+                  onChange={e => setConfig({...config, download_dir: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-6">
+            <button 
+              onClick={onSave}
+              disabled={!config.base_url || !config.username || !config.password}
+              className="w-full bg-blue-600 text-white py-6 rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-blue-500/40 hover:bg-blue-700 transition-all active:scale-95 disabled:grayscale disabled:opacity-50 flex items-center justify-center gap-4 text-sm"
+            >
+              Start Syncing Library <ChevronRight size={20}/>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // --- Settings Modal Component ---
 
@@ -832,16 +924,18 @@ export default function App() {
 
   // Tab switching logic: refresh categories
   useEffect(() => {
-    fetchCategories(activeTab);
-    setSelectedCat('0'); // Reset to "All Categories"
-  }, [activeTab, fetchCategories]);
+    if (config?.is_complete) {
+      fetchCategories(activeTab);
+      setSelectedCat('0'); // Reset to "All Categories"
+    }
+  }, [activeTab, fetchCategories, config?.is_complete]);
 
   // Category selection or search logic: refresh items
   useEffect(() => {
-    if (selectedCat !== null) {
+    if (config?.is_complete && selectedCat !== null) {
       fetchItems(activeTab, selectedCat, debouncedSearch, 0, false);
     }
-  }, [selectedCat, activeTab, debouncedSearch, fetchItems]);
+  }, [selectedCat, activeTab, debouncedSearch, fetchItems, config?.is_complete]);
 
   const handleLoadMore = () => {
     fetchItems(activeTab, selectedCat, debouncedSearch, offset + LIMIT, true);
@@ -876,10 +970,13 @@ export default function App() {
   const handleSaveConfig = async () => {
     if (!config) return;
     try {
-      await api.updateConfig(config);
+      const updated = await api.updateConfig(config);
+      setConfig(updated);
       setToast({ message: 'Settings saved successfully', type: 'success' });
       setShowSettings(false);
-      fetchCategories(activeTab); // Re-fetch categories in case provider changed
+      if (updated.is_complete) {
+        fetchCategories(activeTab);
+      }
     } catch (err) {
       setToast({ message: 'Failed to save settings', type: 'error' });
     }
@@ -924,6 +1021,16 @@ export default function App() {
   };
 
   const totalSpeed = queue.reduce((acc, item) => acc + (item.status === 'downloading' ? item.speed : 0), 0);
+
+  if (config && !config.is_complete) {
+    return (
+      <SetupWizard 
+        config={config}
+        setConfig={setConfig}
+        onSave={handleSaveConfig}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden text-sm transition-colors duration-200 font-sans tracking-tight">

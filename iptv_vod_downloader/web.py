@@ -219,7 +219,10 @@ class QueueAddRequest(BaseModel):
 @app.get("/api/config")
 async def get_config():
     """Returns the current application configuration."""
-    return config_manager.config
+    from dataclasses import asdict
+    data = asdict(config_manager.config)
+    data["is_complete"] = config_manager.config.is_complete()
+    return data
 
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate):
@@ -272,6 +275,8 @@ async def get_categories(kind: str, refresh: bool = False):
         
         cache_manager.set_categories(kind, cats)
         return cats
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -307,6 +312,8 @@ async def get_series_info(series_id: str):
     c = get_client()
     try:
         return c.get_series_info(series_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
