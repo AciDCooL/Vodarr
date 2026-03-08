@@ -1,144 +1,69 @@
-# IPTV VOD Downloader
+# IPTV VOD Downloader (Web Version)
 
-Desktop application written in Python for browsing and downloading VOD content from IPTV providers compatible with the Xtream Codes API.
+A modern, web-based desktop application for browsing and downloading VOD content from IPTV providers compatible with the Xtream Codes API. This version is designed to run headless in Docker or as a local web service.
 
-## License
+## Key Features
+- **Modern Web UI:** Built with React (TypeScript), TailwindCSS, and Lucide icons.
+- **Headless Operation:** Designed to run in Docker containers on NAS (Synology, Unraid), servers, or locally.
+- **Real-Time Monitoring:** 
+    - Real-time download speed indicators.
+    - Rich progress bars (Downloaded / Total Size).
+    - Transient error tracking and timeline visualization.
+- **Smart Downloader:** 
+    - Sequential download queue with persistence.
+    - Automatic retries for transient stream hiccups.
+    - Stall detection (>2s chunks).
+    - Resumable downloads (supports Byte-Range requests).
+- **Advanced Navigation:** Category filtering with instant updates and scrollable lists for large catalogs.
+- **Identity Spoofing:** Choose between various User-Agents (Chrome, TiviMate, VLC, etc.) to ensure provider compatibility.
 
-This project is released under the MIT license. See `LICENSE`.
+## Deployment
 
-## Intended Use
+### Docker (Recommended)
+The easiest way to run the application is using Docker Compose.
 
-This software is intended only for accessing and downloading content you are authorized to use.
-You are responsible for complying with the laws, service terms, and copyright rules that apply in your jurisdiction.
+1. **Clone the repository and switch to the web branch:**
+   ```bash
+   git checkout web-version
+   ```
+2. **Build and start:**
+   ```bash
+   docker-compose up -d --build
+   ```
+3. **Access the UI:** Open `http://localhost:6767`
 
-## Features
+### Local Setup
+1. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Run Headless:**
+   ```bash
+   python main.py --headless --port 6767
+   ```
 
-- Save IPTV connection settings locally.
-- Test server credentials before loading the catalog.
-- Browse movie and TV series categories.
-- Search results by title.
-- Sort catalog results by title or year.
-- Queue movies directly from the main catalog.
-- Open a dedicated episode browser for TV series.
-- Queue a full season, selected episodes, or an entire series.
-- Maintain a download queue with:
-  - graphical progress bars with percentage labels
-  - retry for failed downloads
-  - queue filtering and sorting
-  - persisted queue state across app restarts
-- Highlight items that are already downloaded or already queued.
-- Organize downloads automatically into portable English folder names:
-  - `Movies/`
-  - `Series/<Series Name (Year)>/Season XX/`
+## Configuration
 
-## Requirements
+The application can be configured via the Web UI or via environment variables in Docker:
 
-- Python 3.9 or newer
-- Windows is the primary target for the packaged build
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `IPTV_PORT` | Web server port | `6767` |
+| `IPTV_BASE_URL` | IPTV Provider URL | `""` |
+| `IPTV_USERNAME` | IPTV Username | `""` |
+| `IPTV_PASSWORD` | IPTV Password | `""` |
+| `IPTV_DOWNLOAD_DIR` | Download destination | `/downloads` |
+| `IPTV_CONFIG_DIR` | Persistent state storage | `/config` |
 
-Install dependencies with:
+## Technical Architecture
+- **Backend:** FastAPI (Python 3.11+) handles the REST API and coordinates the multi-threaded download manager.
+- **Frontend:** React 18 with Vite, utilizing asynchronous polling for real-time state updates.
+- **Container:** Multi-stage Docker build resulting in a slim, production-ready image.
 
-```bash
-pip install -r requirements.txt
-```
-
-Run the test suite with:
-
-```bash
-python -m unittest -v
-```
-
-## Run From Source
-
-```bash
-python main.py
-```
-
-Application data is stored under:
-
-```text
-~/.iptv_vod_downloader/
-```
-
-That folder contains:
-
-- `config.json`: saved IPTV connection settings
-- `queue_state.json`: persisted queue entries
-- `ui_state.json`: saved window/UI preferences
-- `app.log`: runtime log file
-
-## How It Works
-
-1. Enter the IPTV server URL, username, password, and download folder.
-2. Click `Test connection` to validate credentials.
-3. Click `Refresh catalog` to load movies and series.
-4. Queue movies directly from the catalog, or open a series to select episodes.
-5. Use the download queue to start, pause, stop, retry, filter, or remove items.
-
-## Download Behavior
-
-- Downloads are processed sequentially.
-- Existing completed files are treated as already downloaded.
-- Partial `.part` files are reused when the server supports ranged downloads.
-- Duplicate queue entries are skipped based on target path and item identity.
-
-## Local Build
-
-To generate a local portable Windows build:
-
-```bash
-pip install -r requirements.txt pyinstaller
-pyinstaller --noconfirm --clean --onedir --windowed --name iptv-vod-downloader main.py
-```
-
-This creates a portable folder in:
-
-```text
-dist/iptv-vod-downloader/
-```
-
-Run:
-
-```text
-dist/iptv-vod-downloader/iptv-vod-downloader.exe
-```
-
-## GitHub Actions Release Pipeline
-
-The repository includes a GitHub Actions workflow in:
-
-```text
-.github/workflows/build-release.yml
-```
-
-Behavior:
-
-- Push to `main`: builds a Windows portable artifact
-- Manual workflow run: builds a Windows portable artifact
-- Push a tag matching `v*`: builds a portable ZIP and publishes it to GitHub Releases
-
-Example:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-That creates a release asset named:
-
-```text
-iptv-vod-downloader-windows-x64.zip
-```
-
-Extract the ZIP and launch:
-
-```text
-iptv-vod-downloader.exe
-```
-
-## Notes
-
-- The app targets Xtream Codes compatible endpoints exposed through `player_api.php`.
-- Posters are downloaded when available for series episode browsing.
-- The UI is implemented with Tkinter.
-- The project currently uses a single download worker by design.
+## Modular Structure
+The project is organized into logical modules:
+- `api.py`: Xtream Codes API client.
+- `downloader.py`: Core download logic and worker thread.
+- `web.py`: FastAPI routes and web-specific state management.
+- `config.py`: Persistent configuration and state handling.
+- `gui.py`: (Legacy) Tkinter desktop interface.

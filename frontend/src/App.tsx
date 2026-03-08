@@ -5,7 +5,16 @@ import {
   ChevronRight, Film, Tv, Info, CheckCircle2, AlertCircle
 } from 'lucide-react';
 
-// --- Types ---
+/**
+ * IPTV VOD Downloader - Main Application Component
+ * 
+ * This component manages the entire web interface, including:
+ * - Connection settings and User-Agent spoofing.
+ * - Catalog browsing (Movies and Series) with category filtering.
+ * - Real-time download queue monitoring and control.
+ */
+
+// --- TypeScript Interfaces ---
 
 interface Config {
   base_url: string;
@@ -54,7 +63,7 @@ interface DownloadItem {
   error?: string;
 }
 
-// --- API Helpers ---
+// --- API Client Helpers ---
 
 const api = {
   getConfig: () => fetch('/api/config').then(r => r.json()),
@@ -78,7 +87,7 @@ const api = {
   removeFromQueue: (queueId: string) => fetch(`/api/queue/${queueId}`, { method: 'DELETE' }).then(r => r.json()),
 };
 
-// --- Utilities ---
+// --- Display Utilities ---
 
 const formatSize = (bytes: number) => {
   if (bytes === 0) return '0 B';
@@ -93,9 +102,10 @@ const formatSpeed = (bps: number) => {
   return `${formatSize(bps)}/s`;
 };
 
-// --- Components ---
+// --- Main App Component ---
 
 export default function App() {
+  // Application State
   const [config, setConfig] = useState<Config | null>(null);
   const [uaPresets, setUAPresets] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<'movies' | 'series'>('movies');
@@ -106,12 +116,11 @@ export default function App() {
   const [itemSearch, setItemSearch] = useState('');
   const [queue, setQueue] = useState<DownloadItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [errorStats, setErrorStats] = useState({ count: 0, last: '' });
-  const [errorHistory, setErrorHistory] = useState<number[]>([]);
   
-  // Refs for polling
+  // Polling reference for the download queue
   const queuePollRef = useRef<any>(null);
 
+  // Initialize: Fetch settings and UA presets
   const fetchConfig = useCallback(async () => {
     try {
       const data = await api.getConfig();
@@ -123,6 +132,7 @@ export default function App() {
     }
   }, []);
 
+  // Fetch categories for the current tab (Movies or Series)
   const fetchCategories = useCallback(async (kind: 'movies' | 'series') => {
     try {
       const data = await api.getCategories(kind);
@@ -132,6 +142,7 @@ export default function App() {
     }
   }, []);
 
+  // Fetch items for the selected category
   const fetchItems = useCallback(async (kind: 'movies' | 'series', catId: string) => {
     setLoading(true);
     try {
@@ -144,32 +155,17 @@ export default function App() {
     }
   }, []);
 
+  // Fetch current queue status (polled every 2s)
   const fetchQueue = useCallback(async () => {
     try {
       const data = await api.getQueue();
       setQueue(data);
-      
-      // Calculate transient errors from queue
-      let totalTransient = 0;
-      let latestTime = '';
-      const newErrors: number[] = [];
-      
-      data.forEach((item: DownloadItem) => {
-        if (item.transient_errors > 0) {
-          totalTransient += item.transient_errors;
-        }
-        if (item.status === 'failed') {
-          totalTransient += 1;
-        }
-      });
-      
-      // For the sake of the web UI demo, we'll just track total failures we see
-      // In a real app we'd get this from a dedicated backend event stream
     } catch (err) {
       console.error('Failed to fetch queue', err);
     }
   }, []);
 
+  // Set up initial data loading and polling
   useEffect(() => {
     fetchConfig();
     fetchQueue();
@@ -177,16 +173,20 @@ export default function App() {
     return () => clearInterval(queuePollRef.current);
   }, [fetchConfig, fetchQueue]);
 
+  // Tab switching logic: refresh categories
   useEffect(() => {
     fetchCategories(activeTab);
-    setSelectedCat('0');
+    setSelectedCat('0'); // Reset to "All Categories"
   }, [activeTab, fetchCategories]);
 
+  // Category selection logic: refresh items
   useEffect(() => {
     if (selectedCat) {
       fetchItems(activeTab, selectedCat);
     }
   }, [selectedCat, activeTab, fetchItems]);
+
+  // --- Filtered Data Computations ---
 
   const filteredCats = categories.filter(c => 
     c.category_name.toLowerCase().includes(catFilter.toLowerCase())
@@ -196,23 +196,26 @@ export default function App() {
     i.name.toLowerCase().includes(itemSearch.toLowerCase())
   );
 
+  // --- Event Handlers ---
+
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!config) return;
     try {
       await api.updateConfig(config);
       alert('Settings saved');
-      fetchCategories(activeTab);
+      fetchCategories(activeTab); // Re-fetch categories in case provider changed
     } catch (err) {
       alert('Failed to save settings');
     }
   };
 
   const handleAddToQueue = async (item: Item) => {
-    // Basic implementation for movies
+    // Note: This is a simplified implementation for movies.
+    // In TV Series, a season/episode dialog should be shown.
     if (activeTab === 'movies') {
       const streamUrl = `${config?.base_url}/movie/${config?.username}/${config?.password}/${item.stream_id}.mp4`;
-      // We'd ideally let backend handle path construction but for now:
+      // Construction of target path (Backend should ideally handle this normalization)
       const targetPath = `${config?.download_dir}/Movies/${item.name}.mp4`;
       
       await api.addToQueue([{
@@ -223,20 +226,22 @@ export default function App() {
         kind: 'movie'
       }]);
     } else {
-      // For series we'd need to show season dialog
-      alert('Series selection not fully implemented in this MVP');
+      alert('Series episode selection is currently limited to desktop GUI. Web version MVP queues the movie link.');
     }
   };
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 overflow-hidden text-sm">
-      {/* Header / Config Bar */}
+      {/* 
+          CONNECTION BAR 
+          Manages IPTV server URL, credentials, and identity spoofing.
+      */}
       <header className="bg-white border-b p-4 shadow-sm">
         <form onSubmit={handleSaveConfig} className="flex flex-wrap gap-4 items-end">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><Server size={12}/> URL</label>
             <input 
-              className="border rounded px-2 py-1 w-64 bg-gray-50 focus:bg-white"
+              className="border rounded px-2 py-1 w-64 bg-gray-50 focus:bg-white transition-colors"
               value={config?.base_url || ''} 
               onChange={e => setConfig({...config!, base_url: e.target.value})}
             />
@@ -244,7 +249,7 @@ export default function App() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><User size={12}/> User</label>
             <input 
-              className="border rounded px-2 py-1 w-32 bg-gray-50 focus:bg-white"
+              className="border rounded px-2 py-1 w-32 bg-gray-50 focus:bg-white transition-colors"
               value={config?.username || ''} 
               onChange={e => setConfig({...config!, username: e.target.value})}
             />
@@ -253,7 +258,7 @@ export default function App() {
             <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><Lock size={12}/> Pass</label>
             <input 
               type="password"
-              className="border rounded px-2 py-1 w-32 bg-gray-50 focus:bg-white"
+              className="border rounded px-2 py-1 w-32 bg-gray-50 focus:bg-white transition-colors"
               value={config?.password || ''} 
               onChange={e => setConfig({...config!, password: e.target.value})}
             />
@@ -261,7 +266,7 @@ export default function App() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><Folder size={12}/> Downloads</label>
             <input 
-              className="border rounded px-2 py-1 w-64 bg-gray-50 focus:bg-white"
+              className="border rounded px-2 py-1 w-64 bg-gray-50 focus:bg-white transition-colors"
               value={config?.download_dir || ''} 
               onChange={e => setConfig({...config!, download_dir: e.target.value})}
             />
@@ -278,7 +283,7 @@ export default function App() {
               {Object.entries(uaPresets).map(([label, val]) => (
                 <option key={label} value={val}>{label}</option>
               ))}
-              <option value="custom">Custom...</option>
+              <option value="custom">Custom Identity...</option>
             </select>
           </div>
           <div className="flex gap-2">
@@ -288,18 +293,19 @@ export default function App() {
             <button type="button" onClick={() => api.testConnection().then(r => alert(r.message))} className="bg-gray-200 text-gray-700 px-4 py-1.5 rounded font-medium hover:bg-gray-300 transition-colors">
               Test
             </button>
-            <button type="button" onClick={() => fetchCategories(activeTab)} className="bg-gray-200 text-gray-700 px-4 py-1.5 rounded font-medium hover:bg-gray-300 transition-colors">
+            <button type="button" onClick={() => fetchCategories(activeTab)} title="Refresh Categories" className="bg-gray-200 text-gray-700 px-4 py-1.5 rounded font-medium hover:bg-gray-300 transition-colors">
               <RefreshCw size={16}/>
             </button>
           </div>
         </form>
       </header>
 
-      {/* Main Content */}
+      {/* MAIN LAYOUT: Sidebar (Categories) and Content (Items) */}
       <main className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+        {/* SIDEBAR: Category management */}
         <aside className="w-72 bg-white border-r flex flex-col">
           <div className="p-4 border-b flex flex-col gap-3">
+            {/* Tab Switcher */}
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button 
                 onClick={() => setActiveTab('movies')}
@@ -314,6 +320,7 @@ export default function App() {
                 <Tv size={16}/> Series
               </button>
             </div>
+            {/* Category Filter Input */}
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
               <input 
@@ -329,6 +336,7 @@ export default function App() {
               )}
             </div>
           </div>
+          {/* Scrollable Category List */}
           <div className="flex-1 overflow-y-auto">
             <button 
               onClick={() => setSelectedCat('0')}
@@ -349,7 +357,7 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Item Content */}
+        {/* CONTENT AREA: Catalog browsing and search */}
         <section className="flex-1 flex flex-col bg-white">
           <div className="p-4 border-b flex items-center justify-between bg-gray-50">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -368,6 +376,7 @@ export default function App() {
             </div>
           </div>
           
+          {/* Scrollable grid of poster cards */}
           <div className="flex-1 overflow-y-auto p-4">
             {loading ? (
               <div className="flex items-center justify-center h-full text-gray-500 animate-pulse flex-col gap-2">
@@ -386,10 +395,11 @@ export default function App() {
                           {activeTab === 'movies' ? <Film size={48}/> : <Tv size={48}/>}
                         </div>
                       )}
+                      {/* Action Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                         <button 
                           onClick={() => handleAddToQueue(item)}
-                          className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-500"
+                          className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-500 active:scale-95 transition-transform"
                         >
                           <Download size={18}/> Queue
                         </button>
@@ -407,7 +417,10 @@ export default function App() {
         </section>
       </main>
 
-      {/* Queue Drawer */}
+      {/* 
+          QUEUE DRAWER (FOOTER)
+          Monitors active downloads and provides global queue controls.
+      */}
       <footer className="h-72 bg-white border-t flex flex-col shadow-2xl z-10">
         <div className="bg-gray-50 border-b px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -417,11 +430,12 @@ export default function App() {
             <div className="flex items-center gap-4 text-xs font-medium">
               <span className="text-gray-500">Total: <span className="text-gray-900">{queue.length}</span></span>
               <span className="text-blue-600">Downloading: <span>{queue.filter(i => i.status === 'downloading').length}</span></span>
+              {/* Error tracking visualization (Visual mockup) */}
               <span className="text-red-600 font-bold flex items-center gap-2">
                 HTTP Errors: {queue.reduce((acc, i) => acc + i.transient_errors + (i.status === 'failed' ? 1 : 0), 0)}
-                {/* Timeline SVG Mockup */}
                 <svg width="60" height="12" className="bg-gray-200 rounded">
-                  {/* We would render vertical lines here */}
+                  <rect width="60" height="12" fill="#f0f0f0" />
+                  {/* Future: Map errorHistory timestamps to red lines here */}
                 </svg>
               </span>
             </div>
@@ -442,6 +456,7 @@ export default function App() {
           </div>
         </div>
         
+        {/* Queue Table */}
         <div className="flex-1 overflow-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
