@@ -1329,7 +1329,6 @@ export default function App() {
   const [selectedSeries, setSelectedSeries] = useState<Item | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showQueue, setShowQueue] = useState(true);
   const [isQueueMaximized, setIsQueueMaximized] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -1968,8 +1967,7 @@ export default function App() {
       } bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl transition-all duration-500 ease-in-out overflow-hidden`}>
         <div 
           className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-default flex-shrink-0"
-        >
-          <div className="flex items-center gap-3 md:gap-8 min-w-0">
+        >          <div className="flex items-center gap-3 md:gap-8 min-w-0">
             <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2 md:gap-3">
               <Download size={20} className="text-blue-600"/> 
               <span className="hidden xs:inline">Queue</span>
