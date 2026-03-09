@@ -6,7 +6,7 @@ import {
   Sun, Moon, Clock, Save, ChevronDown, 
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
   LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, GripVertical,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, Copy
 } from 'lucide-react';
 
 /**
@@ -998,6 +998,37 @@ function SettingsModal({
                         onChange={e => setConfig({...config, admin_password: e.target.value})}
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">REST API Access</label>
+                    <div className="flex gap-3">
+                      <div className="relative group flex-1">
+                        <input 
+                          readOnly
+                          className="w-full border-none rounded-2xl px-6 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 font-mono text-xs focus:ring-0 outline-none"
+                          value={config.api_key} 
+                        />
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(config.api_key);
+                            setToast({ message: 'API Key copied to clipboard', type: 'success' });
+                          }}
+                          className="absolute right-4 top-3.5 p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                          title="Copy API Key"
+                        >
+                          <Copy size={16}/>
+                        </button>
+                      </div>
+                      <button 
+                        onClick={() => setConfig({...config, api_key: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('')})}
+                        className="px-6 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-300 rounded-2xl hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 transition-all border border-transparent hover:border-amber-500/20 active:scale-95"
+                        title="Regenerate API Key"
+                      >
+                        <RefreshCw size={18}/>
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-gray-500 italic pl-1">Use this key in the "X-Api-Key" header for automation.</p>
                   </div>
 
                   <div className="flex items-center justify-between p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-[2rem] border border-blue-100 dark:border-blue-800/50">

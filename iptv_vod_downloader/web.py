@@ -13,9 +13,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import datetime
 import ipaddress
+import secrets
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Depends, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 # --- Authentication Logic ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
+api_key_header = APIKeyHeader(name="X-Api-Key", auto_error=False)
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
@@ -66,7 +68,13 @@ current_config = AppConfig()
 def is_local_request(request: Request) -> bool:
     """Checks if the request originates from a local IP address."""
     try:
-        client_host = request.client.host if request.client else "127.0.0.1"
+        # Use X-Forwarded-For if behind a proxy like Traefik
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            client_host = forwarded.split(",")[0].strip()
+        else:
+            client_host = request.client.host if request.client else "127.0.0.1"
+            
         # Handle cases like "::1"
         if client_host == "::1":
             return True
@@ -91,13 +99,17 @@ def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] 
     encoded_jwt = jwt.encode(to_encode, current_config.secret_key, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
-    # Check bypass
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme), api_key: str = Depends(api_key_header)):
+    # 1. Check local bypass
     if current_config.auth_bypass_local and is_local_request(request):
         return current_config.admin_username
 
+    # 2. Check API Key (X-Api-Key header)
+    if api_key and current_config.api_key and api_key == current_config.api_key:
+        return current_config.admin_username
+
+    # 3. If no password set, auth is disabled (initial setup state)
     if not current_config.admin_password_hash:
-        # If no password set, auth is disabled (initial setup state)
         return "admin"
 
     credentials_exception = HTTPException(
@@ -105,36 +117,39 @@ async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if not token:
-        raise credentials_exception
-        
-    try:
-        payload = jwt.decode(token, current_config.secret_key, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-        
-    if username != current_config.admin_username:
-        raise credentials_exception
-        
-    return username
+    
+    # 4. Check JWT Token
+    if token:
+        try:
+            payload = jwt.decode(token, current_config.secret_key, algorithms=[ALGORITHM])
+            username: str = payload.get("sub")
+            if username == current_config.admin_username:
+                return username
+        except JWTError:
+            pass
+            
+    raise credentials_exception
 
 def load_app_config():
     """Loads configuration from database and merges with environment defaults."""
     global current_config
     stored = db.get_config()
+    
+    # Merge env and stored
+    from dataclasses import asdict
+    conf_obj = AppConfig()
     if stored:
-        # Filter valid keys for AppConfig
-        from dataclasses import asdict
-        valid_keys = asdict(AppConfig()).keys()
-        filtered = {k: v for k, v in stored.items() if k in valid_keys}
+        valid_keys = asdict(conf_obj).keys()
+        for k, v in stored.items():
+            if k in valid_keys:
+                setattr(conf_obj, k, v)
+    
+    # AUTO-GENERATE API KEY IF MISSING
+    if not conf_obj.api_key:
+        conf_obj.api_key = secrets.token_hex(32)
+        db.save_config({"api_key": conf_obj.api_key})
         
-        # Merge stored data into default config
-        data = asdict(current_config)
-        data.update(filtered)
-        current_config = AppConfig(**data)
+    current_config = conf_obj
 
 # Initial load
 load_app_config()
@@ -321,6 +336,7 @@ class ConfigUpdate(BaseModel):
     admin_username: Optional[str] = None
     admin_password: Optional[str] = None
     auth_bypass_local: Optional[bool] = None
+    api_key: Optional[str] = None
 
 class QueueAddRequest(BaseModel):
     """Payload for adding one or more items to the download queue."""

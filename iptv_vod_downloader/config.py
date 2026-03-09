@@ -47,6 +47,7 @@ class AppConfig:
     admin_username: str = os.getenv("IPTV_ADMIN_USER", "admin")
     admin_password_hash: str = "" # Stored hashed in DB
     auth_bypass_local: bool = os.getenv("IPTV_AUTH_BYPASS_LOCAL", "true").lower() == "true"
+    api_key: str = os.getenv("IPTV_API_KEY", "")
     secret_key: str = os.getenv("IPTV_SECRET_KEY", os.urandom(32).hex())
 
     def is_complete(self) -> bool:
