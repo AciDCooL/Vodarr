@@ -1097,7 +1097,9 @@ function EpisodeSelectorModal({
 
   const toggleSeason = (_seasonKey: string, episodes: Episode[]) => {
     const next = new Set(selectedEpisodes);
-    const seasonEpIds = episodes.map(e => e.id);
+  const toggleSeason = (_seasonKey: string, episodes: Episode[]) => {
+    const next = new Set(selectedEpisodes);
+    const seasonEpIds = episodes.map(e => e.id.toString());
     const allSelected = seasonEpIds.every(id => next.has(id));
     
     if (allSelected) {
@@ -1106,6 +1108,17 @@ function EpisodeSelectorModal({
       seasonEpIds.forEach(id => next.add(id));
     }
     setSelectedEpisodes(next);
+  };
+
+  const selectAllSeasons = () => {
+    const allEpIds = Object.values(seasons).flat().map(e => e.id.toString());
+    const allSelected = allEpIds.length > 0 && allEpIds.every(id => selectedEpisodes.has(id));
+    
+    if (allSelected) {
+      setSelectedEpisodes(new Set());
+    } else {
+      setSelectedEpisodes(new Set(allEpIds));
+    }
   };
 
   const handleQueueSelected = () => {
@@ -1196,7 +1209,7 @@ function EpisodeSelectorModal({
             </div>
           </div>
           
-          <div className="flex-1 flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex-1 flex items-center gap-4">
             <div className="relative flex-1 w-full">
               <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
               <input 
@@ -1205,16 +1218,6 @@ function EpisodeSelectorModal({
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
-            </div>
-            <div className="flex gap-4">
-              <button onClick={onClose} className="px-8 py-4 text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-gray-700 dark:hover:text-gray-200 transition-all">Dismiss</button>
-              <button 
-                onClick={handleQueueSelected}
-                disabled={selectedEpisodes.size === 0}
-                className="px-14 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/40 active:scale-95 flex items-center gap-3 disabled:opacity-50 disabled:shadow-none disabled:grayscale"
-              >
-                <Zap size={18}/> Send to Queue
-              </button>
             </div>
           </div>
         </div>
@@ -1292,7 +1295,12 @@ function EpisodeSelectorModal({
             </div>
           </div>
           <div className="flex gap-4">
-            <button onClick={onClose} className="px-8 py-4 text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-gray-700 dark:hover:text-gray-200 transition-all">Dismiss</button>
+            <button 
+              onClick={selectAllSeasons}
+              className="px-8 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95"
+            >
+              {Object.values(seasons).flat().length > 0 && Object.values(seasons).flat().every(e => selectedEpisodes.has(e.id.toString())) ? 'Deselect All' : 'Select All Seasons'}
+            </button>
             <button 
               onClick={handleQueueSelected}
               disabled={selectedEpisodes.size === 0}
