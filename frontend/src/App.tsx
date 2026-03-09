@@ -5,7 +5,7 @@ import {
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, Info,
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
-  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp, PlayCircle
+  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp
 } from 'lucide-react';
 
 /**
