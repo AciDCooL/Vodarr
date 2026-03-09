@@ -295,34 +295,10 @@ class DownloadManager:
                     
                     if can_retry:
                         item.retries += 1
-                        
-                        # --- FALLBACK ROTATION ---
-                        # If we have fallback URLs in meta, cycle to the next one
-                        fallbacks = item.meta.get("fallbacks", [])
-                        if fallbacks and (item.retries - 1) < len(fallbacks):
-                            new_url = fallbacks[item.retries - 1]
-                            item.stream_url = new_url
-                            
-                            # Update target path extension to match new URL
-                            new_ext = new_url.split(".")[-1]
-                            if len(new_ext) <= 4: # Sanity check for extension
-                                item.target_path = item.target_path.with_suffix(f".{new_ext}")
-                            
-                            item.error = f"Auto-retry {item.retries}{'' if self.retry_forever else '/' + str(self.max_retries)} (Format swap: .{new_ext})"
-                        else:
-                            item.error = f"Auto-retry {item.retries}{'' if self.retry_forever else '/' + str(self.max_retries)}"
-                        
+                        item.error = f"Auto-retry {item.retries}{'' if self.retry_forever else '/' + str(self.max_retries)}"
                         item.status = "queued"
                         item.speed = 0.0
-                        item.progress = 0.0
-                        item.downloaded_bytes = 0
                         
-                        # Clean up temp file if we are switching formats or retrying fresh
-                        temp_path = item.target_path.with_suffix(item.target_path.suffix + ".part")
-                        with suppress(Exception):
-                            if temp_path.exists():
-                                temp_path.unlink()
-
                         with self._lock:
                             self._queue.append(item)
                             self._has_items.set()

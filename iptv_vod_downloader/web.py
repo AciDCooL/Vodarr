@@ -455,59 +455,33 @@ async def add_to_queue(request: QueueAddRequest):
         raise HTTPException(status_code=500, detail="Downloader not initialized")
     
     new_items = []
-    c = get_client()
     for data in request.items:
-        # 1. Determine best extension from account info
-        allowed_fmts = ["mkv", "mp4", "avi", "ts"]
-        try:
-            acc = c.check_connection()
-            if "user_info" in acc and "allowed_output_formats" in acc["user_info"]:
-                allowed_fmts = acc["user_info"]["allowed_output_formats"]
-        except:
-            pass
+        item_id = str(data.get("item_id", ""))
+        kind = data.get("kind", "movie")
+        stream_url = data.get("stream_url", "")
+        title = data.get("title", "Untitled")
+        target_path = data.get("target_path", "")
+        meta = data.get("meta", {})
 
-        original_ext = allowed_fmts[0] if allowed_fmts else "mp4"
-        
-        if kind == "movies":
+        if not stream_url or not target_path:
+            continue
+
+        # Try to get file size via HEAD request if not already provided
+        total_size = data.get("total_size", 0)
+        if total_size <= 0:
             try:
-                info = c.get_vod_info(item_id)
-                # Use real extension if provider gives it
-                if "container_extension" in info:
-                    original_ext = info["container_extension"]
-                # Capture duration for metadata
-                if "info" in info and "duration_secs" in info["info"]:
-                    meta["duration_secs"] = info["info"]["duration_secs"]
+                # Use a separate session for head check to avoid mixing headers
+                with requests.head(stream_url, timeout=5, headers=build_headers(current_config.user_agent), allow_redirects=True) as r:
+                    if r.status_code == 200:
+                        total_size = int(r.headers.get("Content-Length", 0))
             except:
                 pass
-        
-        # 2. Extract extension from stream_url if present
-        stream_url = data["stream_url"]
-        if "." in stream_url:
-            url_ext = stream_url.split(".")[-1]
-            if len(url_ext) <= 4:
-                original_ext = url_ext
-        
-        # 3. Build fallbacks from allowed formats
-        fallbacks = [f for f in allowed_fmts if f != original_ext]
-
-        meta = data.get("meta", {})
-        meta["original_extension"] = original_ext
-        meta["fallbacks"] = fallbacks
-        
-        # Try to get file size via HEAD request
-        total_size = 0
-        try:
-            with requests.head(stream_url, timeout=5, headers=build_headers(current_config.user_agent), allow_redirects=True) as r:
-                if r.status_code == 200:
-                    total_size = int(r.headers.get("Content-Length", 0))
-        except:
-            pass
 
         item = DownloadItem(
             item_id=item_id,
-            title=data["title"],
+            title=title,
             stream_url=stream_url,
-            target_path=Path(data["target_path"]),
+            target_path=Path(target_path),
             kind=kind,
             meta=meta,
             total_size=total_size
