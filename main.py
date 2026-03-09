@@ -35,8 +35,12 @@ def configure_logging() -> None:
     # Reduce noise from 3rd party libs unless in debug
     if not debug_env:
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+        logging.getLogger("uvicorn.error").setLevel(logging.INFO)
         logging.getLogger("requests").setLevel(logging.WARNING)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
+    else:
+        logging.getLogger("uvicorn.access").setLevel(logging.DEBUG)
+        logging.getLogger("uvicorn.error").setLevel(logging.DEBUG)
 
 if __name__ == "__main__":
     # Initialize logging before any other imports

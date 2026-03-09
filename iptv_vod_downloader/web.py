@@ -447,9 +447,17 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
         
         # Update dynamic log level if debug_mode changed
         if "debug_mode" in filtered_updates:
-            new_level = logging.DEBUG if filtered_updates["debug_mode"] else logging.INFO
+            is_debug = filtered_updates["debug_mode"]
+            new_level = logging.DEBUG if is_debug else logging.INFO
             logging.getLogger().setLevel(new_level)
-            logger.info(f"Log level switched to {'DEBUG' if filtered_updates['debug_mode'] else 'INFO'}")
+            
+            # Also update noisy third-party loggers
+            third_party_level = logging.DEBUG if is_debug else logging.WARNING
+            logging.getLogger("uvicorn.access").setLevel(third_party_level)
+            logging.getLogger("requests").setLevel(third_party_level)
+            logging.getLogger("urllib3").setLevel(third_party_level)
+            
+            logger.info(f"Log level switched to {'DEBUG' if is_debug else 'INFO'}")
     
     # 4. Sync settings to manager
     conf = current_config
