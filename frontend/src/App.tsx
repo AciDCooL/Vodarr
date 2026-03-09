@@ -1847,7 +1847,7 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col min-h-full">
+              <div className="flex flex-col min-h-full pb-80 md:pb-96">
                 <div className={`p-6 ${viewMode === 'poster' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6' : 'flex flex-col space-y-1'}`}>
                   {displayItems.map((item, idx) => {
                     if (viewMode === 'poster') {
