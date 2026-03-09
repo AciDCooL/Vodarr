@@ -31,6 +31,7 @@ interface Config {
   retry_end_hour: number;
   connect_timeout: number;
   read_timeout: number;
+  media_management: boolean;
   is_complete: boolean;
   is_in_window: boolean;
 }
@@ -680,6 +681,25 @@ function SettingsModal({
                       </div>
                     </div>
                   </div>
+
+                  <div className="flex items-center justify-between p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800/50">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Media Management</h4>
+                        <span className="bg-blue-600 text-white text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm">Radarr/Sonarr</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">Organize downloads into "Title (Year)" and "Season X" subfolders.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={config.media_management}
+                        onChange={e => setConfig({...config, media_management: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
@@ -1116,7 +1136,13 @@ function EpisodeSelectorModal({
             stream_url: streamUrl,
             target_path: targetPath,
             kind: 'episode',
-            meta: { original_extension: ext }
+            meta: { 
+              original_extension: ext,
+              series_name: series.name,
+              season_num: ep.season,
+              episode_num: ep.episode_num,
+              episode_title: ep.title
+            }
           });
         }
       });
@@ -1555,7 +1581,9 @@ export default function App() {
         kind: 'movie',
         meta: {
           fallbacks: fallbackUrls,
-          original_extension: primaryExt
+          original_extension: primaryExt,
+          year: item.year,
+          display_year: item.display_year
         }
       }]);
       setToast({ message: `Added ${rawName} to queue`, type: 'success' });

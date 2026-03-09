@@ -232,6 +232,7 @@ class ConfigUpdate(BaseModel):
     retry_end_hour: Optional[int] = None
     connect_timeout: Optional[int] = None
     read_timeout: Optional[int] = None
+    media_management: Optional[bool] = None
 
 class QueueAddRequest(BaseModel):
     """Payload for adding one or more items to the download queue."""
@@ -474,6 +475,40 @@ async def add_to_queue(request: QueueAddRequest):
 
         if not stream_url or not target_path:
             continue
+
+        # --- MEDIA MANAGEMENT REORGANIZATION ---
+        if current_config.media_management:
+            tp = Path(target_path)
+            ext = tp.suffix
+            
+            if kind == "movie":
+                # Movie logic: /Downloads/Movies/Title (Year)/Title (Year).ext
+                year = meta.get("year") or meta.get("display_year")
+                year_suffix = f" ({year})" if year else ""
+                folder_name = f"{title}{year_suffix}"
+                # Construct path relative to the Movies root
+                # Assumes target_path originally looks like .../Movies/Title.ext
+                # We climb up one level to get the 'Movies' root
+                root = tp.parent
+                target_path = str(root / folder_name / f"{folder_name}{ext}")
+            
+            elif kind == "episode":
+                # TV logic: /Downloads/TV/Series Title/Season XX/Series Title - SxxExx - Episode Title.ext
+                series_title = meta.get("series_name", "Unknown Series")
+                season_num = meta.get("season_num", 1)
+                episode_num = meta.get("episode_num", 1)
+                episode_title = meta.get("episode_title") or title
+                
+                # Sanitize titles
+                series_title = series_title.strip()
+                
+                season_folder = f"Season {int(season_num):02d}"
+                filename = f"{series_title} - S{int(season_num):02d}E{int(episode_num):02d} - {episode_title}{ext}"
+                
+                # Assumes target_path originally looks like .../TV/Series Title/filename
+                # We want to insert the Season folder
+                root = tp.parent.parent # The 'TV' folder
+                target_path = str(root / series_title / season_folder / filename)
 
         # Try to get file size via HEAD request if not already provided
         total_size = data.get("total_size", 0)

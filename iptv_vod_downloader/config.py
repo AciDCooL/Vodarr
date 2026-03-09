@@ -41,6 +41,7 @@ class AppConfig:
     retry_end_hour: int = int(os.getenv("IPTV_RETRY_END", "9"))
     connect_timeout: int = int(os.getenv("IPTV_CONNECT_TIMEOUT", "5"))
     read_timeout: int = int(os.getenv("IPTV_READ_TIMEOUT", "10"))
+    media_management: bool = os.getenv("IPTV_MEDIA_MANAGEMENT", "false").lower() == "true"
 
     def is_complete(self) -> bool:
         """Return True when the configuration looks usable."""
