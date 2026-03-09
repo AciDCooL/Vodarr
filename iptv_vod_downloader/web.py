@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .api import IPTVClient, APIError
@@ -331,6 +331,53 @@ async def get_account_info():
         c = get_client()
         return c.check_connection()
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/stream/{kind}/{item_id}")
+async def proxy_stream(kind: str, item_id: str):
+    """Proxies and transcodes (if needed) the stream from the provider."""
+    try:
+        c = get_client()
+        conf = current_config
+        base = conf.base_url.rstrip("/")
+        
+        # Build source URL
+        source_url = f"{base}/{'series' if kind == 'series' else 'movie'}/{conf.username}/{conf.password}/{item_id}.ts"
+        
+        # FFmpeg command to transcode to fragmented MP4 (browser friendly)
+        command = [
+            "ffmpeg",
+            "-i", source_url,
+            "-vcodec", "copy",
+            "-acodec", "aac",
+            "-f", "mp4",
+            "-movflags", "frag_keyframe+empty_moov+default_base_moof",
+            "pipe:1"
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        async def stream_generator():
+            try:
+                while True:
+                    chunk = await process.stdout.read(1024 * 64)
+                    if not chunk:
+                        break
+                    yield chunk
+            except Exception as e:
+                logger.error(f"Stream error: {e}")
+            finally:
+                if process.returncode is None:
+                    process.terminate()
+
+        return StreamingResponse(stream_generator(), media_type="video/mp4")
+
+    except Exception as e:
+        logger.exception("Failed to proxy stream")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/system/restart")

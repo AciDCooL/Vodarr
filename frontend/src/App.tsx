@@ -883,7 +883,7 @@ function ItemDetailsModal({
           {showPlayer ? (
             <div className="w-full h-full bg-black flex items-center justify-center relative">
               <video 
-                src={item.stream_id ? `/api/movie/${item.stream_id}` : ''} 
+                src={`/api/stream/${kind}/${kind === 'movies' ? item.stream_id : item.series_id}`} 
                 controls 
                 autoPlay 
                 className="w-full h-full object-contain"
