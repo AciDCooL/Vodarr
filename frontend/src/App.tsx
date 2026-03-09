@@ -1431,7 +1431,8 @@ export default function App() {
 
   // --- Drag and Drop Reordering ---
   const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [dragOverPos, setDragOverPos] = useState<'above' | 'below' | null>(null);
 
   const handleDragStart = (idx: number) => {
     dragItem.current = idx;
@@ -1439,19 +1440,54 @@ export default function App() {
 
   const handleDragOver = (e: React.DragEvent, idx: number) => {
     e.preventDefault();
-    dragOverItem.current = idx;
+    if (dragItem.current === null) return;
+    
+    // Determine if we are in the top or bottom half of the row
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    const pos = e.clientY < mid ? 'above' : 'below';
+    
+    setDragOverIdx(idx);
+    setDragOverPos(pos);
   };
 
   const handleDrop = async () => {
-    if (dragItem.current === null || dragOverItem.current === null) return;
+    if (dragItem.current === null || dragOverIdx === null || dragOverPos === null) return;
     
     const copyListItems = [...queue];
     const dragItemContent = copyListItems[dragItem.current];
+    
+    // Remove the item from its old position
     copyListItems.splice(dragItem.current, 1);
-    copyListItems.splice(dragOverItem.current, 0, dragItemContent);
+    
+    // Calculate new index
+    let newIdx = dragOverIdx;
+    // Adjust index if we removed an item before the target and we are dropping 'below'
+    // or if we are dropping 'below' the target
+    if (dragOverPos === 'below') {
+      // If we dragged from above the target to below it, the removal shifted indices
+      if (dragItem.current < dragOverIdx) {
+        newIdx = dragOverIdx; // It's already shifted by splice
+      } else {
+        newIdx = dragOverIdx + 1;
+      }
+    } else {
+      // Dropping above
+      if (dragItem.current < dragOverIdx) {
+        newIdx = dragOverIdx - 1;
+      } else {
+        newIdx = dragOverIdx;
+      }
+    }
+    
+    // Ensure bounds
+    newIdx = Math.max(0, Math.min(newIdx, copyListItems.length));
+    
+    copyListItems.splice(newIdx, 0, dragItemContent);
     
     dragItem.current = null;
-    dragOverItem.current = null;
+    setDragOverIdx(null);
+    setDragOverPos(null);
     
     setQueue(copyListItems);
     
@@ -1984,8 +2020,13 @@ export default function App() {
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
                   onDrop={handleDrop}
-                  onDragEnd={() => { dragItem.current = null; dragOverItem.current = null; }}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group cursor-default active:bg-blue-50 dark:active:bg-blue-900/10"
+                  onDragLeave={() => { setDragOverIdx(null); setDragOverPos(null); }}
+                  onDragEnd={() => { dragItem.current = null; setDragOverIdx(null); setDragOverPos(null); }}
+                  className={`hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-all group cursor-default active:bg-blue-50 dark:active:bg-blue-900/10 relative ${
+                    dragOverIdx === idx && dragOverPos === 'above' ? 'border-t-4 border-t-blue-500' : ''
+                  } ${
+                    dragOverIdx === idx && dragOverPos === 'below' ? 'border-b-4 border-b-blue-500' : ''
+                  } ${dragItem.current === idx ? 'opacity-40 grayscale' : ''}`}
                 >
                   <td className="pl-4 md:pl-8 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 cursor-grab active:cursor-grabbing">
                     <GripVertical size={16} />
