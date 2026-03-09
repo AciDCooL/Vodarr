@@ -392,11 +392,17 @@ async def auth_status(request: Request, token: str = Depends(oauth2_scheme)):
     return AuthStatus(is_authenticated=False)
 
 @app.post("/api/config")
-async def update_config(update: ConfigUpdate):
+async def update_config(update: ConfigUpdate, user: str = Depends(get_current_user)):
     """Updates configuration and signals the downloader to update its settings."""
     global current_config
     from dataclasses import asdict
     update_data = update.dict(exclude_unset=True)
+    
+    # Handle password hashing
+    if "admin_password" in update_data:
+        pw = update_data.pop("admin_password")
+        if pw:
+            update_data["admin_password_hash"] = get_password_hash(pw)
     
     # Save to database
     db.save_config(update_data)
@@ -404,7 +410,11 @@ async def update_config(update: ConfigUpdate):
     # Update current runtime config
     data = asdict(current_config)
     data.update(update_data)
-    current_config = AppConfig(**data)
+    
+    # Filter for valid AppConfig fields only
+    valid_keys = asdict(AppConfig()).keys()
+    filtered_data = {k: v for k, v in data.items() if k in valid_keys}
+    current_config = AppConfig(**filtered_data)
     
     conf = current_config
     if download_manager:
@@ -421,6 +431,9 @@ async def update_config(update: ConfigUpdate):
     
     resp_data = asdict(conf)
     resp_data["is_complete"] = conf.is_complete()
+    # Mask sensitive data
+    resp_data.pop("admin_password_hash", None)
+    resp_data.pop("secret_key", None)
     return resp_data
 
 @app.get("/api/common-user-agents")
