@@ -103,11 +103,17 @@ const api = {
 
   request: async (url: string, options: RequestInit = {}) => {
     const token = api.getAuthToken();
+    const configStr = localStorage.getItem('vodarr_config');
+    const localApiKey = configStr ? JSON.parse(configStr).api_key : null;
+
     const headers: any = {
       ...(options.headers || {})
     };
+    
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    } else if (localApiKey) {
+      headers['X-Api-Key'] = localApiKey;
     }
     
     const resp = await fetch(url, { ...options, headers });
@@ -1609,6 +1615,7 @@ export default function App() {
     try {
       const data = await api.getConfig();
       setConfig(data);
+      localStorage.setItem('vodarr_config', JSON.stringify(data));
     } catch (err) {
       console.error('Failed to fetch config', err);
     }
@@ -1817,7 +1824,13 @@ export default function App() {
     if (!config) return;
     try {
       const updated = await api.updateConfig(config);
-      setConfig(updated);
+      // Clear sensitive field from local state after save
+      const cleanUpdated = { ...updated };
+      delete cleanUpdated.admin_password;
+      
+      setConfig(cleanUpdated);
+      localStorage.setItem('vodarr_config', JSON.stringify(cleanUpdated));
+      
       setToast({ message: 'Settings saved successfully', type: 'success' });
       setShowSettings(false);
       if (updated.is_complete) {

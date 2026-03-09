@@ -426,9 +426,11 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
     # 2. Handle password hashing separately
     if "admin_password" in update_data:
         pw = update_data.pop("admin_password")
-        if pw:
+        # Only hash if a new password was actually provided (not empty)
+        if pw and pw.strip():
             logger.info("Updating admin password...")
-            update_data["admin_password_hash"] = get_password_hash(pw)
+            # Truncate to 72 bytes for bcrypt compatibility just in case
+            update_data["admin_password_hash"] = get_password_hash(pw[:72])
     
     # 3. Filter only valid AppConfig keys before saving to DB or applying to object
     valid_keys = asdict(AppConfig()).keys()
