@@ -493,20 +493,49 @@ class DownloadManager:
             self._requeue_front(item)
             self._notify(item, force=True)
             return True
+        if item.status == "queued":
+            # Item was preempted by reordering
+            self._requeue_front(item)
+            self._notify(item, force=True)
+            return True
         return False
 
     def reorder_queue(self, new_order: List[str]) -> None:
-        """Reorders the internal queue based on the provided list of queue_ids."""
+        """Reorders the internal queue based on the provided list of queue_ids and preempts current if needed."""
         with self._lock:
-            # Create a map for quick lookup
-            qid_map = {item.queue_id: item for item in self._queue}
-            # Reconstruct the queue based on the new order
-            new_queue = []
+            # 1. Gather all items (pending + current)
+            all_items_map = {item.queue_id: item for item in self._queue}
+            if self._current_item:
+                all_items_map[self._current_item.queue_id] = self._current_item
+
+            # 2. Reconstruct the full list based on new_order
+            new_full_list = []
             for qid in new_order:
-                if qid in qid_map:
-                    new_queue.append(qid_map[qid])
-            # Update the internal queue
-            self._queue[:] = new_queue
+                if qid in all_items_map:
+                    new_full_list.append(all_items_map[qid])
+
+            if not new_full_list:
+                return
+
+            new_top_item = new_full_list[0]
+            
+            # 3. If the current item is no longer the top item, we need to preempt it
+            if self._current_item and self._current_item.queue_id != new_top_item.queue_id:
+                curr = self._current_item
+                # Only preempt if it was actually downloading or paused (not just finishing)
+                if curr.status in {"downloading", "paused"}:
+                    curr.status = "queued" # Mark as queued so it doesn't count as a failure
+                    curr.speed = 0.0
+                    self._notify(curr, force=True)
+                    self._interrupt_current_download()
+                    # It will be caught by the exception handler and added back to the queue
+            
+            # 4. Update the pending queue (excluding current if it's still top)
+            if self._current_item and self._current_item.queue_id == new_top_item.queue_id:
+                self._queue[:] = new_full_list[1:]
+            else:
+                self._queue[:] = new_full_list
+
             # Signal that items are available
             if self._queue:
                 self._has_items.set()
