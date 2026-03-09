@@ -31,7 +31,7 @@ from .cache import DatabaseManager
 logger = logging.getLogger(__name__)
 
 # --- Authentication Logic ---
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
 api_key_header = APIKeyHeader(name="X-Api-Key", auto_error=False)
 
