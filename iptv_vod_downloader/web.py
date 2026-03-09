@@ -436,14 +436,30 @@ async def add_to_queue(request: QueueAddRequest):
         raise HTTPException(status_code=500, detail="Downloader not initialized")
     
     new_items = []
+    c = get_client()
     for data in request.items:
+        # For movies, try to get the real extension from the API first
+        item_id = str(data["item_id"])
+        kind = data.get("kind", "movie")
+        
+        original_ext = "mp4" # Default
+        fallbacks = ["mkv", "mp4", "avi"]
+        
+        if kind == "movies":
+            try:
+                info = c.get_vod_info(item_id)
+                if "container_extension" in info:
+                    original_ext = info["container_extension"]
+            except:
+                pass # Fallback to default
+        
         # Extract original extension for dynamic URL building
         stream_url = data["stream_url"]
-        original_ext = stream_url.split(".")[-1] if "." in stream_url else "mp4"
-        if len(original_ext) > 4: original_ext = "mp4" # Sanity check
+        if "." in stream_url:
+            url_ext = stream_url.split(".")[-1]
+            if len(url_ext) <= 4:
+                original_ext = url_ext
         
-        # Add format fallbacks for auto-retry
-        fallbacks = ["mkv", "mp4", "avi"]
         if original_ext in fallbacks:
             fallbacks.remove(original_ext)
 
@@ -452,11 +468,11 @@ async def add_to_queue(request: QueueAddRequest):
         meta["fallbacks"] = fallbacks
         
         item = DownloadItem(
-            item_id=str(data["item_id"]),
+            item_id=item_id,
             title=data["title"],
             stream_url=stream_url,
             target_path=Path(data["target_path"]),
-            kind=data.get("kind", "movie"),
+            kind=kind,
             meta=meta
         )
         new_items.append(item)

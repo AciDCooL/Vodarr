@@ -103,6 +103,13 @@ class IPTVClient:
         data = self._request(action="get_vod_info", vod_id=stream_id)
         if not isinstance(data, dict):
             raise APIError("Unexpected payload for VOD info.")
+        
+        # Ensure we have the container extension in a consistent place
+        if "info" in data and "container_extension" in data["info"]:
+            data["container_extension"] = data["info"]["container_extension"]
+        elif "movie_data" in data and "container_extension" in data["movie_data"]:
+            data["container_extension"] = data["movie_data"]["container_extension"]
+            
         return data
 
     def get_series_categories(self) -> List[Dict[str, Any]]:
