@@ -295,7 +295,7 @@ class DownloadManager:
                     
                     if can_retry:
                         item.retries += 1
-                        item.error = f"Auto-retry {item.retries}{'' if self.retry_forever else '/' + str(self.max_retries)}"
+                        item.error = f"Auto-retry {item.retries}"
                         item.status = "queued"
                         item.speed = 0.0
                         

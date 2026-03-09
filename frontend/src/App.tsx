@@ -947,16 +947,20 @@ function ItemDetailsModal({
               </h2>
               
               <div className="flex items-center gap-6 text-gray-500 dark:text-gray-400 font-bold text-sm">
-                <div className="flex items-center gap-2">
-                  <Clock size={16} />
-                  <span>
-                    {info.duration_secs ? `${Math.floor(info.duration_secs / 60)}m` : (info.duration || info.last_modified || 'N/A')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  <span>{info.releaseDate || item.year || item.display_year || 'N/A'}</span>
-                </div>
+                {(info.duration_secs || info.duration) && (
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} />
+                    <span>
+                      {info.duration_secs ? `${Math.floor(info.duration_secs / 60)}m` : info.duration}
+                    </span>
+                  </div>
+                )}
+                {(info.releaseDate || item.year || item.display_year) && (
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} />
+                    <span>{info.releaseDate || item.year || item.display_year}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1778,7 +1782,9 @@ export default function App() {
                           </div>
                           <div className="mt-3 px-1">
                             <h3 className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{item.display_year || item.year || 'N/A'}</p>
+                            {(item.display_year || item.year) && (
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{item.display_year || item.year}</p>
+                            )}
                           </div>
                         </div>
                       );
@@ -1804,7 +1810,7 @@ export default function App() {
                             <div className="min-w-0">
                               <h3 className="text-base font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
                               <div className="flex items-center gap-3 mt-1">
-                                <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-lg text-[10px] font-black text-gray-500 uppercase tracking-tighter">{item.display_year || item.year || 'N/A'}</span>
+                                {(item.display_year || item.year) && <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-lg text-[10px] font-black text-gray-500 uppercase tracking-tighter">{item.display_year || item.year}</span>}
                                 {activeTab === 'series' && <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Series</span>}
                               </div>
                             </div>
@@ -1830,7 +1836,7 @@ export default function App() {
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                           <span className="text-[10px] font-black text-gray-400 w-8 tabular-nums">{(offset + idx + 1).toString().padStart(2, '0')}</span>
                           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
-                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter opacity-60">({item.display_year || item.year || 'N/A'})</span>
+                          {(item.display_year || item.year) && <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter opacity-60">({item.display_year || item.year})</span>}
                         </div>
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
@@ -1982,7 +1988,7 @@ export default function App() {
                         
                         {item.retries > 0 && item.status !== 'completed' && (
                           <span className="text-[7px] md:text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/50">
-                            Attempt {item.retries + 1}
+                            Attempt {item.retries + 1} {config?.max_retries ? `/ ${config.max_retries + 1}` : ''}
                           </span>
                         )}
                       </div>
