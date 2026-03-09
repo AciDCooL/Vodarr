@@ -450,6 +450,16 @@ class DownloadManager:
                             item.progress = min(0.99, elapsed / 10.0)
                         self._notify(item)
 
+            # --- COMPLETION VERIFICATION ---
+            # Ensure we didn't exit the loop because of a preemption or pause
+            if item.status == "queued" or self._paused:
+                self._handle_transfer_exception(item, temp_path, Exception("Interrupted"))
+                return
+
+            # If we have a known total, verify we actually got it all
+            if total > 0 and downloaded < total:
+                raise requests.RequestException(f"Connection closed prematurely ({format_size(downloaded)} / {format_size(total)})")
+
             # Successful full download
             temp_path.replace(target)
             item.status = "completed"
@@ -486,7 +496,7 @@ class DownloadManager:
             item.speed = 0.0
             self._notify(item, force=True)
             return True
-        if self._pause_requested_queue_id == item.queue_id or self._paused:
+        if self._pause_requested_queue_id == item.queue_id or self._paused or item.status == "paused":
             item.status = "paused"
             item.error = None
             item.speed = 0.0
@@ -494,8 +504,9 @@ class DownloadManager:
             self._notify(item, force=True)
             return True
         if item.status == "queued":
-            # Item was preempted by reordering
-            self._requeue_front(item)
+            # Item was preempted by reordering - it is already in the new _queue list
+            # but we need to notify and clear speed
+            item.speed = 0.0
             self._notify(item, force=True)
             return True
         return False
