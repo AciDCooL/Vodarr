@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from .api import IPTVClient, APIError
@@ -331,75 +331,6 @@ async def get_account_info():
         c = get_client()
         return c.check_connection()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/stream/{kind}/{item_id}")
-async def proxy_stream(kind: str, item_id: str):
-    """Proxies and transcodes the stream from the provider.
-    Always streams from the online source.
-    """
-    try:
-        # 1. Build remote source URL
-        c = get_client()
-        conf = current_config
-        base = conf.base_url.rstrip("/")
-        
-        # Build source URL - FFmpeg handles .ts best for transcoding
-        source_url = f"{base}/{'series' if kind == 'series' else 'movie'}/{conf.username}/{conf.password}/{item_id}.ts"
-        
-        logger.info(f"Proxying remote stream: {source_url}")
-
-        # 2. Setup FFmpeg to transcode to fragmented MP4 (browser friendly)
-        command = [
-            "ffmpeg",
-            "-hide_banner",
-            "-loglevel", "error",
-            "-i", source_url,
-            "-vcodec", "copy",
-            "-acodec", "aac",
-            "-f", "mp4",
-            "-movflags", "frag_keyframe+empty_moov+default_base_moof",
-            "pipe:1"
-        ]
-        
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-
-        async def stream_generator():
-            try:
-                while True:
-                    chunk = await process.stdout.read(1024 * 128)
-                    if not chunk:
-                        # Check if process failed
-                        stderr = await process.stderr.read()
-                        if stderr:
-                            logger.error(f"FFmpeg Error: {stderr.decode()}")
-                        break
-                    yield chunk
-            except Exception as e:
-                logger.error(f"Stream generation error: {e}")
-            finally:
-                if process.returncode is None:
-                    try:
-                        process.terminate()
-                        await process.wait()
-                    except:
-                        pass
-
-        return StreamingResponse(
-            stream_generator(), 
-            media_type="video/mp4",
-            headers={
-                "Accept-Ranges": "bytes",
-                "Content-Disposition": "inline",
-            }
-        )
-
-    except Exception as e:
-        logger.exception(f"Failed to proxy stream for {item_id}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/system/restart")

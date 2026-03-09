@@ -853,7 +853,6 @@ function ItemDetailsModal({
 }) {
   const [details, setDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [showPlayer, setShowPlayer] = useState(false);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -882,54 +881,13 @@ function ItemDetailsModal({
         
         {/* Backdrop / Poster Area */}
         <div className="relative w-full md:w-[400px] h-64 md:h-auto bg-gray-200 dark:bg-gray-800 flex-shrink-0">
-          {showPlayer ? (
-            <div className="w-full h-full bg-black flex items-center justify-center relative">
-              <video 
-                src={`/api/stream/${kind}/${kind === 'movies' ? item.stream_id : item.series_id}`} 
-                controls 
-                autoPlay 
-                className="w-full h-full object-contain"
-                onLoadStart={() => console.log('Player: Loading started...')}
-                onCanPlay={() => console.log('Player: Can play video')}
-                onPlay={() => console.log('Player: Playing...')}
-                onError={(e) => {
-                  const video = e.target as HTMLVideoElement;
-                  console.error('Player Error:', video.error);
-                  setToast({ 
-                    message: `Playback Error: ${video.error?.message || 'Check browser console for details'}`, 
-                    type: 'error' 
-                  });
-                }}
-              />
-              <button 
-                onClick={() => setShowPlayer(false)}
-                className="absolute top-4 left-4 p-2 bg-black/40 text-white rounded-lg hover:bg-black/60 transition-all z-50"
-              >
-                <X size={16}/>
-              </button>
-              <div className="absolute top-4 right-4 bg-black/40 px-3 py-1 rounded text-[8px] text-white/60 font-mono pointer-events-none">
-                DEBUG MODE ACTIVE
-              </div>
-            </div>
-          ) : (
-            <>
-              <SafeImage 
-                src={item.cover} 
-                className="w-full h-full object-cover" 
-                alt={item.name}
-                fallbackIcon={kind === 'movies' ? Film : Tv}
-                iconSize={48}
-              />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => setShowPlayer(true)}
-                  className="bg-blue-600 p-8 rounded-full text-white hover:scale-110 transition-all shadow-2xl shadow-blue-500/50 flex items-center justify-center group/play"
-                >
-                  <Play size={48} fill="currentColor" className="group-hover/play:scale-110 transition-transform" strokeWidth={3} />
-                </button>
-              </div>
-            </>
-          )}
+          <SafeImage 
+            src={item.cover} 
+            className="w-full h-full object-cover" 
+            alt={item.name}
+            fallbackIcon={kind === 'movies' ? Film : Tv}
+            iconSize={48}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden pointer-events-none" />
           <button 
             onClick={onClose}
