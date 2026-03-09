@@ -102,14 +102,20 @@ const api = {
 
   request: async (url: string, options: RequestInit = {}) => {
     const token = api.getAuthToken();
-    const headers = {
-      ...(options.headers || {}),
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    const headers: any = {
+      ...(options.headers || {})
     };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const resp = await fetch(url, { ...options, headers });
+    
     if (resp.status === 401) {
-      const isLoginRequest = url.includes('/api/auth/login') || url.includes('/api/auth/status');
-      if (!isLoginRequest) {
+      const isAuthRoute = url.includes('/api/auth/login') || url.includes('/api/auth/status');
+      if (!isAuthRoute) {
+        // Only clear and reload if we aren't currently trying to check auth status
+        // or login, to avoid infinite loops during local bypass
         api.clearAuthToken();
         window.location.reload();
       }
@@ -118,18 +124,26 @@ const api = {
   },
 
   getAuthStatus: () => api.request('/api/auth/status').then(r => r.json()),
-  login: (credentials: any) => fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(credentials)
-  }).then(r => r.json()),
+  login: async (credentials: any) => {
+    const resp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
+    return resp.json();
+  },
 
   getConfig: () => api.request('/api/config').then(r => r.json()),
-  updateConfig: (config: Partial<Config>) => api.request('/api/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(config)
-  }).then(r => r.json()),
+  updateConfig: async (config: Partial<Config>) => {
+    const resp = await api.request('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || 'Update failed');
+    return data;
+  },
   getUAPresets: () => api.request('/api/common-user-agents').then(r => r.json()),
   testConnection: () => api.request('/api/test-connection').then(r => r.json()),
   getAccountInfo: () => api.request('/api/account').then(r => r.json()),
@@ -1791,8 +1805,8 @@ export default function App() {
       if (updated.is_complete) {
         fetchCategories(activeTab);
       }
-    } catch (err) {
-      setToast({ message: 'Failed to save settings', type: 'error' });
+    } catch (err: any) {
+      setToast({ message: err.message || 'Failed to save settings', type: 'error' });
     }
   };
 
