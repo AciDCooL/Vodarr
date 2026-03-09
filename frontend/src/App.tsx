@@ -1097,8 +1097,6 @@ function EpisodeSelectorModal({
 
   const toggleSeason = (_seasonKey: string, episodes: Episode[]) => {
     const next = new Set(selectedEpisodes);
-  const toggleSeason = (_seasonKey: string, episodes: Episode[]) => {
-    const next = new Set(selectedEpisodes);
     const seasonEpIds = episodes.map(e => e.id.toString());
     const allSelected = seasonEpIds.every(id => next.has(id));
     
