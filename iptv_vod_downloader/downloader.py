@@ -80,10 +80,7 @@ class DownloadManager:
     _progress_notify_interval = 0.2
     _speed_update_interval = 1.0
     _idle_wait_timeout = 0.1
-    _connect_timeout = 5
-    _read_timeout = 10
     _chunk_timeout = 2.0  # seconds to wait for a single chunk before counting as stall
-    _max_retries = 5
     _chunk_size = 1024 * 128  # 128 KiB
 
     def __init__(
@@ -96,6 +93,8 @@ class DownloadManager:
         enable_download_window: bool = False,
         retry_start_hour: int = 0,
         retry_end_hour: int = 24,
+        connect_timeout: int = 5,
+        read_timeout: int = 10,
         url_builder: Optional[Callable[[DownloadItem], str]] = None,
     ) -> None:
         self._queue: List[DownloadItem] = []
@@ -114,6 +113,8 @@ class DownloadManager:
         self.enable_download_window = enable_download_window
         self.retry_start_hour = retry_start_hour
         self.retry_end_hour = retry_end_hour
+        self.connect_timeout = connect_timeout
+        self.read_timeout = read_timeout
         self.url_builder = url_builder
         self._current_item: Optional[DownloadItem] = None
         self._current_response: Optional[requests.Response] = None
@@ -130,6 +131,10 @@ class DownloadManager:
         self.retry_start_hour = start_hour
         self.retry_end_hour = end_hour
         self.enable_download_window = enable_window
+
+    def update_timeout_settings(self, connect_timeout: int, read_timeout: int) -> None:
+        self.connect_timeout = connect_timeout
+        self.read_timeout = read_timeout
 
     def start(self) -> None:
         if self._worker and self._worker.is_alive():
@@ -348,132 +353,122 @@ class DownloadManager:
             self._notify(item, force=True)
             return
 
-        retries = 0
-        while retries <= self._max_retries:
-            try:
-                existing_size = temp_path.stat().st_size if temp_path.exists() else 0
-                request_headers: dict[str, str] = {}
-                if existing_size:
-                    request_headers["Range"] = f"bytes={existing_size}-"
+        try:
+            existing_size = temp_path.stat().st_size if temp_path.exists() else 0
+            request_headers: dict[str, str] = {}
+            if existing_size:
+                request_headers["Range"] = f"bytes={existing_size}-"
+            
+            with session.get(
+                item.stream_url,
+                stream=True,
+                timeout=(self.connect_timeout, self.read_timeout),
+                headers=request_headers,
+            ) as resp:
+                self._current_response = resp
+                resp.raise_for_status()
+                total = self._resolve_total_size(resp, existing_size)
+                item.total_size = total
+                downloaded = existing_size
                 
-                with session.get(
-                    item.stream_url,
-                    stream=True,
-                    timeout=(self._connect_timeout, self._read_timeout),
-                    headers=request_headers,
-                ) as resp:
-                    self._current_response = resp
-                    resp.raise_for_status()
-                    total = self._resolve_total_size(resp, existing_size)
-                    item.total_size = total
-                    downloaded = existing_size
+                file_mode = "ab" if existing_size and resp.status_code == 206 else "wb"
+                if file_mode == "wb":
+                    downloaded = 0
+                    existing_size = 0
+
+                item._last_speed_bytes = downloaded
+                item._last_speed_at = time.monotonic()
+                item.downloaded_bytes = downloaded
+
+                if total:
+                    item.progress = min(0.99, downloaded / total)
+                    self._notify(item)
+
+                with temp_path.open(file_mode) as fh:
+                    start_time = time.time()
+                    chunk_iterator = resp.iter_content(chunk_size=self._chunk_size)
                     
-                    file_mode = "ab" if existing_size and resp.status_code == 206 else "wb"
-                    if file_mode == "wb":
-                        downloaded = 0
-                        existing_size = 0
+                    while True:
+                        chunk_start = time.monotonic()
+                        try:
+                            chunk = next(chunk_iterator)
+                        except StopIteration:
+                            break
+                        except (requests.RequestException, Exception) as e:
+                            item.transient_errors += 1
+                            self._notify(item, force=True)
+                            raise e
 
-                    item._last_speed_bytes = downloaded
-                    item._last_speed_at = time.monotonic()
-                    item.downloaded_bytes = downloaded
+                        elapsed_chunk = time.monotonic() - chunk_start
+                        if elapsed_chunk > self._chunk_timeout:
+                            item.transient_errors += 1
+                            self._notify(item, force=True)
 
-                    if total:
-                        item.progress = min(0.99, downloaded / total)
-                        self._notify(item)
-
-                    with temp_path.open(file_mode) as fh:
-                        start_time = time.time()
-                        chunk_iterator = resp.iter_content(chunk_size=self._chunk_size)
+                        if self._stop_event.is_set():
+                            raise DownloadStopped("Download stopped by user.")
+                        if item.queue_id in self._cancelled_queue_ids:
+                            raise DownloadCancelled("Download cancelled by user.")
                         
-                        while True:
-                            chunk_start = time.monotonic()
-                            try:
-                                chunk = next(chunk_iterator)
-                            except StopIteration:
-                                break
-                            except (requests.RequestException, Exception) as e:
-                                item.transient_errors += 1
-                                self._notify(item, force=True)
-                                raise e
-
-                            elapsed_chunk = time.monotonic() - chunk_start
-                            if elapsed_chunk > self._chunk_timeout:
-                                item.transient_errors += 1
-                                self._notify(item, force=True)
-
-                            if self._stop_event.is_set():
-                                raise DownloadStopped("Download stopped by user.")
+                        # Check window and pause state
+                        while (self._paused or not self._is_in_download_window()) and not self._stop_event.is_set():
                             if item.queue_id in self._cancelled_queue_ids:
                                 raise DownloadCancelled("Download cancelled by user.")
                             
-                            # Check window and pause state
-                            while (self._paused or not self._is_in_download_window()) and not self._stop_event.is_set():
-                                if item.queue_id in self._cancelled_queue_ids:
-                                    raise DownloadCancelled("Download cancelled by user.")
-                                
-                                if not self._is_in_download_window():
-                                    item.status = "queued"
-                                    item.error = f"Paused: Outside download window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
-                                else:
-                                    item.status = "paused"
-                                    item.error = None
-                                    
-                                item.speed = 0.0
-                                self._notify(item)
-                                self._pause_event.wait(timeout=1.0)
-                            
-                            if item.status == "paused" and not self._paused:
-                                item.status = "downloading"
-                                self._notify(item)
-
-                            if not chunk:
-                                continue
-                            
-                            fh.write(chunk)
-                            downloaded += len(chunk)
-                            item.downloaded_bytes = downloaded
-
-                            now = time.monotonic()
-                            if now - item._last_speed_at >= self._speed_update_interval:
-                                diff = downloaded - item._last_speed_bytes
-                                item.speed = diff / (now - item._last_speed_at)
-                                item._last_speed_bytes = downloaded
-                                item._last_speed_at = now
-
-                            if total:
-                                item.progress = downloaded / total
+                            if not self._is_in_download_window():
+                                item.status = "queued"
+                                item.error = f"Paused: Outside download window ({self.retry_start_hour:02d}:00 - {self.retry_end_hour:02d}:00)"
                             else:
-                                elapsed = time.time() - start_time
-                                item.progress = min(0.99, elapsed / 10.0)
+                                item.status = "paused"
+                                item.error = None
+                                
+                            item.speed = 0.0
+                            self._notify(item)
+                            self._pause_event.wait(timeout=1.0)
+                        
+                        if item.status == "paused" and not self._paused:
+                            item.status = "downloading"
                             self._notify(item)
 
-                # Successful full download
-                temp_path.replace(target)
-                item.status = "completed"
-                item.progress = 1.0
-                item.speed = 0.0
-                item.downloaded_bytes = item.total_size
-                item.error = None
-                self._notify(item, force=True)
-                return
+                        if not chunk:
+                            continue
+                        
+                        fh.write(chunk)
+                        downloaded += len(chunk)
+                        item.downloaded_bytes = downloaded
 
-            except (DownloadCancelled, DownloadStopped):
-                raise
-            except (requests.RequestException, Exception) as exc:
-                retries += 1
-                item.transient_errors += 1
+                        now = time.monotonic()
+                        if now - item._last_speed_at >= self._speed_update_interval:
+                            diff = downloaded - item._last_speed_bytes
+                            item.speed = diff / (now - item._last_speed_at)
+                            item._last_speed_bytes = downloaded
+                            item._last_speed_at = now
+
+                        if total:
+                            item.progress = downloaded / total
+                        else:
+                            elapsed = time.time() - start_time
+                            item.progress = min(0.99, elapsed / 10.0)
+                        self._notify(item)
+
+            # Successful full download
+            temp_path.replace(target)
+            item.status = "completed"
+            item.progress = 1.0
+            item.speed = 0.0
+            item.downloaded_bytes = item.total_size
+            item.error = None
+            self._notify(item, force=True)
+            return
+
+        except (DownloadCancelled, DownloadStopped):
+            raise
+        except (requests.RequestException, Exception) as exc:
+            if not self._handle_transfer_exception(item, temp_path, exc):
+                item.status = "failed"
+                item.error = str(exc)
+                item.speed = 0.0
                 self._notify(item, force=True)
-                
-                if retries > self._max_retries or self._stop_event.is_set() or self._paused:
-                    if not self._handle_transfer_exception(item, temp_path, exc):
-                        item.status = "failed"
-                        item.error = str(exc)
-                        item.speed = 0.0
-                        self._notify(item, force=True)
-                    return
-                
-                # Wait a bit before retrying
-                time.sleep(min(retries * 2, 10))
+            return
 
     def _handle_transfer_exception(self, item: DownloadItem, temp_path: Path, exc: Exception) -> bool:
         if item.queue_id in self._cancelled_queue_ids:

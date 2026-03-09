@@ -177,6 +177,8 @@ def init_downloader():
             enable_download_window=conf.enable_download_window,
             retry_start_hour=conf.retry_start_hour,
             retry_end_hour=conf.retry_end_hour,
+            connect_timeout=conf.connect_timeout,
+            read_timeout=conf.read_timeout,
             url_builder=build_item_url
         )
         
@@ -228,6 +230,8 @@ class ConfigUpdate(BaseModel):
     enable_download_window: Optional[bool] = None
     retry_start_hour: Optional[int] = None
     retry_end_hour: Optional[int] = None
+    connect_timeout: Optional[int] = None
+    read_timeout: Optional[int] = None
 
 class QueueAddRequest(BaseModel):
     """Payload for adding one or more items to the download queue."""
@@ -280,6 +284,7 @@ async def update_config(update: ConfigUpdate):
             conf.retry_end_hour,
             conf.enable_download_window
         )
+        download_manager.update_timeout_settings(conf.connect_timeout, conf.read_timeout)
     
     resp_data = asdict(conf)
     resp_data["is_complete"] = conf.is_complete()

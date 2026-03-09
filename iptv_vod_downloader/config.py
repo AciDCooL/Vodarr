@@ -39,6 +39,8 @@ class AppConfig:
     enable_download_window: bool = os.getenv("IPTV_ENABLE_WINDOW", "false").lower() == "true"
     retry_start_hour: int = int(os.getenv("IPTV_RETRY_START", "4"))
     retry_end_hour: int = int(os.getenv("IPTV_RETRY_END", "9"))
+    connect_timeout: int = int(os.getenv("IPTV_CONNECT_TIMEOUT", "5"))
+    read_timeout: int = int(os.getenv("IPTV_READ_TIMEOUT", "10"))
 
     def is_complete(self) -> bool:
         """Return True when the configuration looks usable."""

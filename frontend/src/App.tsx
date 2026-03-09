@@ -28,6 +28,8 @@ interface Config {
   enable_download_window: boolean;
   retry_start_hour: number;
   retry_end_hour: number;
+  connect_timeout: number;
+  read_timeout: number;
   is_complete: boolean;
   is_in_window: boolean;
 }
@@ -725,6 +727,33 @@ function SettingsModal({
                       />
                       <label htmlFor="retry_forever" className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Retry Forever</label>
                     </div>
+                  </div>
+
+                  <div className="pt-6 border-t dark:border-gray-800 space-y-4">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Network Timeouts (Seconds)</h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Connection Timeout</label>
+                        <input 
+                          type="number"
+                          className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                          value={config.connect_timeout} 
+                          onChange={e => setConfig({...config, connect_timeout: parseInt(e.target.value) || 5})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Read Timeout</label>
+                        <input 
+                          type="number"
+                          className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                          value={config.read_timeout} 
+                          onChange={e => setConfig({...config, read_timeout: parseInt(e.target.value) || 10})}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-gray-500 font-medium italic pl-1">
+                      Lower values detect dead links faster. Recommended: 3s - 5s.
+                    </p>
                   </div>
 
                   <div className="space-y-4 pt-4 border-t dark:border-gray-800">
