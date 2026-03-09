@@ -887,13 +887,27 @@ function ItemDetailsModal({
                 controls 
                 autoPlay 
                 className="w-full h-full object-contain"
+                onLoadStart={() => console.log('Player: Loading started...')}
+                onCanPlay={() => console.log('Player: Can play video')}
+                onPlay={() => console.log('Player: Playing...')}
+                onError={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  console.error('Player Error:', video.error);
+                  setToast({ 
+                    message: `Playback Error: ${video.error?.message || 'Check browser console for details'}`, 
+                    type: 'error' 
+                  });
+                }}
               />
               <button 
                 onClick={() => setShowPlayer(false)}
-                className="absolute top-4 left-4 p-2 bg-black/40 text-white rounded-lg hover:bg-black/60 transition-all"
+                className="absolute top-4 left-4 p-2 bg-black/40 text-white rounded-lg hover:bg-black/60 transition-all z-50"
               >
                 <X size={16}/>
               </button>
+              <div className="absolute top-4 right-4 bg-black/40 px-3 py-1 rounded text-[8px] text-white/60 font-mono pointer-events-none">
+                DEBUG MODE ACTIVE
+              </div>
             </div>
           ) : (
             <>

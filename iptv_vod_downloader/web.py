@@ -335,18 +335,43 @@ async def get_account_info():
 
 @app.get("/api/stream/{kind}/{item_id}")
 async def proxy_stream(kind: str, item_id: str):
-    """Proxies and transcodes (if needed) the stream from the provider."""
+    """Proxies and transcodes (if needed) the stream from the provider.
+    Checks for locally downloaded file first to save bandwidth and improve performance.
+    """
     try:
+        # 1. Check if we already have this file downloaded
+        local_file = None
+        for q_item in queue_items.values():
+            if str(q_item.get("item_id")) == str(item_id) and q_item.get("status") == "completed":
+                path = Path(q_item.get("target_path"))
+                if path.exists():
+                    local_file = path
+                    break
+        
+        if local_file:
+            logger.info(f"Streaming local file for item {item_id}: {local_file}")
+            return FileResponse(local_file)
+
+        # 2. Build remote source URL
         c = get_client()
         conf = current_config
         base = conf.base_url.rstrip("/")
         
-        # Build source URL
+        # We'll try common extensions if we don't know the exact one
+        # FFmpeg is smart enough to handle many formats even if the extension in URL is .ts
         source_url = f"{base}/{'series' if kind == 'series' else 'movie'}/{conf.username}/{conf.password}/{item_id}.ts"
         
-        # FFmpeg command to transcode to fragmented MP4 (browser friendly)
+        logger.info(f"Proxying remote stream: {source_url}")
+
+        # 3. Setup FFmpeg to transcode to fragmented MP4 (browser friendly)
+        # -re: read input at native frame rate (important for live, optional for VOD but safer for some streams)
+        # -vcodec copy: don't touch video if possible
+        # -acodec aac: ensure audio is browser-compatible
+        # -movflags: required for streaming MP4 over a pipe
         command = [
             "ffmpeg",
+            "-hide_banner",
+            "-loglevel", "error",
             "-i", source_url,
             "-vcodec", "copy",
             "-acodec", "aac",
@@ -364,20 +389,35 @@ async def proxy_stream(kind: str, item_id: str):
         async def stream_generator():
             try:
                 while True:
-                    chunk = await process.stdout.read(1024 * 64)
+                    chunk = await process.stdout.read(1024 * 128)
                     if not chunk:
+                        # Check if process failed
+                        stderr = await process.stderr.read()
+                        if stderr:
+                            logger.error(f"FFmpeg Error: {stderr.decode()}")
                         break
                     yield chunk
             except Exception as e:
-                logger.error(f"Stream error: {e}")
+                logger.error(f"Stream generation error: {e}")
             finally:
                 if process.returncode is None:
-                    process.terminate()
+                    try:
+                        process.terminate()
+                        await process.wait()
+                    except:
+                        pass
 
-        return StreamingResponse(stream_generator(), media_type="video/mp4")
+        return StreamingResponse(
+            stream_generator(), 
+            media_type="video/mp4",
+            headers={
+                "Accept-Ranges": "bytes",
+                "Content-Disposition": "inline",
+            }
+        )
 
     except Exception as e:
-        logger.exception("Failed to proxy stream")
+        logger.exception(f"Failed to proxy stream for {item_id}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/system/restart")
