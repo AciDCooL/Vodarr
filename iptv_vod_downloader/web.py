@@ -335,39 +335,21 @@ async def get_account_info():
 
 @app.get("/api/stream/{kind}/{item_id}")
 async def proxy_stream(kind: str, item_id: str):
-    """Proxies and transcodes (if needed) the stream from the provider.
-    Checks for locally downloaded file first to save bandwidth and improve performance.
+    """Proxies and transcodes the stream from the provider.
+    Always streams from the online source.
     """
     try:
-        # 1. Check if we already have this file downloaded
-        local_file = None
-        for q_item in queue_items.values():
-            if str(q_item.get("item_id")) == str(item_id) and q_item.get("status") == "completed":
-                path = Path(q_item.get("target_path"))
-                if path.exists():
-                    local_file = path
-                    break
-        
-        if local_file:
-            logger.info(f"Streaming local file for item {item_id}: {local_file}")
-            return FileResponse(local_file)
-
-        # 2. Build remote source URL
+        # 1. Build remote source URL
         c = get_client()
         conf = current_config
         base = conf.base_url.rstrip("/")
         
-        # We'll try common extensions if we don't know the exact one
-        # FFmpeg is smart enough to handle many formats even if the extension in URL is .ts
+        # Build source URL - FFmpeg handles .ts best for transcoding
         source_url = f"{base}/{'series' if kind == 'series' else 'movie'}/{conf.username}/{conf.password}/{item_id}.ts"
         
         logger.info(f"Proxying remote stream: {source_url}")
 
-        # 3. Setup FFmpeg to transcode to fragmented MP4 (browser friendly)
-        # -re: read input at native frame rate (important for live, optional for VOD but safer for some streams)
-        # -vcodec copy: don't touch video if possible
-        # -acodec aac: ensure audio is browser-compatible
-        # -movflags: required for streaming MP4 over a pipe
+        # 2. Setup FFmpeg to transcode to fragmented MP4 (browser friendly)
         command = [
             "ffmpeg",
             "-hide_banner",
