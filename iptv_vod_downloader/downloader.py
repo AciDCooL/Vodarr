@@ -89,7 +89,6 @@ class DownloadManager:
         user_agent: Optional[str] = None,
         auto_retry: bool = False,
         max_retries: int = 3,
-        retry_forever: bool = False,
         enable_download_window: bool = False,
         retry_start_hour: int = 0,
         retry_end_hour: int = 24,
@@ -109,7 +108,6 @@ class DownloadManager:
         self._user_agent = user_agent
         self.auto_retry = auto_retry
         self.max_retries = max_retries
-        self.retry_forever = retry_forever
         self.enable_download_window = enable_download_window
         self.retry_start_hour = retry_start_hour
         self.retry_end_hour = retry_end_hour
@@ -124,10 +122,9 @@ class DownloadManager:
     def update_user_agent(self, user_agent: str) -> None:
         self._user_agent = user_agent
 
-    def update_retry_settings(self, auto_retry: bool, max_retries: int, retry_forever: bool, start_hour: int, end_hour: int, enable_window: bool = False) -> None:
+    def update_retry_settings(self, auto_retry: bool, max_retries: int, start_hour: int, end_hour: int, enable_window: bool = False) -> None:
         self.auto_retry = auto_retry
         self.max_retries = max_retries
-        self.retry_forever = retry_forever
         self.retry_start_hour = start_hour
         self.retry_end_hour = end_hour
         self.enable_download_window = enable_window
@@ -296,7 +293,7 @@ class DownloadManager:
                     if self._stop_event.is_set():
                         break
 
-                    can_retry = self.retry_forever or (item.retries < self.max_retries)
+                    can_retry = (item.retries < self.max_retries)
                     
                     if can_retry:
                         item.retries += 1

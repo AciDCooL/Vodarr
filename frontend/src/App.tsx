@@ -25,7 +25,6 @@ interface Config {
   cache_expiry_hours: number;
   auto_retry_failed: boolean;
   max_retries: number;
-  retry_forever: boolean;
   enable_download_window: boolean;
   retry_start_hour: number;
   retry_end_hour: number;
@@ -607,7 +606,7 @@ function SettingsModal({
   uaPresets: Record<string, string>,
   onTest: () => void,
   setToast: (t: { message: string, type: 'success' | 'error' | 'info' }) => void
-}) {  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'automation' | 'system'>('server');
+}) {  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'retries' | 'window' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [accountInfo, setAccountInfo] = useState<any>(null);
 
@@ -634,7 +633,8 @@ function SettingsModal({
     { id: 'server', label: 'Server & API', icon: <Server size={18} /> },
     { id: 'downloads', label: 'Downloads', icon: <HardDrive size={18} /> },
     { id: 'security', label: 'Security', icon: <ShieldCheck size={18} /> },
-    { id: 'automation', label: 'Retry & Automation', icon: <Zap size={18} /> },
+    { id: 'retries', label: 'Retries', icon: <RefreshCw size={18} /> },
+    { id: 'window', label: 'Window', icon: <Clock size={18} /> },
     { id: 'system', label: 'System', icon: <Power size={18} /> },
   ] as const;
 
@@ -843,16 +843,16 @@ function SettingsModal({
               </div>
             )}
 
-            {activeGroup === 'automation' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            {activeGroup === 'retries' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Recovery & Scheduling</h3>
-                  <p className="text-sm text-gray-500">Control how the app behaves when connections drop.</p>
+                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Retries & Timeouts</h3>
+                  <p className="text-sm text-gray-500">Configure how the app handles network interruptions.</p>
                 </div>
 
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border dark:border-gray-800">
-                    <div className="space-y-0.5">
+                  <div className="flex items-center justify-between p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800/50">
+                    <div className="space-y-1">
                       <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Auto-Retry Failed</h4>
                       <p className="text-xs text-gray-500">Automatically re-queue failed downloads.</p>
                     </div>
@@ -863,30 +863,18 @@ function SettingsModal({
                         checked={config.auto_retry_failed}
                         onChange={e => setConfig({...config, auto_retry_failed: e.target.checked})}
                       />
-                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 transition-all"></div>
                     </label>
                   </div>
 
-                  <div className={`grid grid-cols-2 gap-6 transition-all ${!config.auto_retry_failed ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Max Retries</label>
-                      <input 
-                        type="number"
-                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                        value={config.max_retries} 
-                        onChange={e => setConfig({...config, max_retries: parseInt(e.target.value) || 3})}
-                      />
-                    </div>
-                    <div className="flex items-center gap-3 pt-6">
-                      <input 
-                        type="checkbox" 
-                        id="retry_forever"
-                        className="w-5 h-5 rounded-lg border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500"
-                        checked={config.retry_forever}
-                        onChange={e => setConfig({...config, retry_forever: e.target.checked})}
-                      />
-                      <label htmlFor="retry_forever" className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Retry Forever</label>
-                    </div>
+                  <div className={`space-y-2 transition-all ${!config.auto_retry_failed ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Max Retries per Item</label>
+                    <input 
+                      type="number"
+                      className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                      value={config.max_retries} 
+                      onChange={e => setConfig({...config, max_retries: parseInt(e.target.value) || 3})}
+                    />
                   </div>
 
                   <div className="pt-6 border-t dark:border-gray-800 space-y-4">
@@ -915,61 +903,70 @@ function SettingsModal({
                       Lower values detect dead links faster. Recommended: 3s - 5s.
                     </p>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <div className="space-y-4 pt-4 border-t dark:border-gray-800">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-2">
-                        <Clock size={12}/> Download Window (Allowed Hours)
-                      </label>
-                      <label className="relative inline-flex items-center cursor-pointer group">
-                        <input 
-                          type="checkbox" 
-                          className="sr-only peer" 
-                          checked={config.enable_download_window}
-                          onChange={e => setConfig({...config, enable_download_window: e.target.checked})}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
-                        <span className="ml-3 text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200">Enable</span>
-                      </label>
+            {activeGroup === 'window' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Download Window</h3>
+                  <p className="text-sm text-gray-500">Restrict download activity to specific hours of the day.</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-[2rem] border border-blue-100 dark:border-blue-800/50">
+                    <div className="space-y-1">
+                      <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Enable Window</h4>
+                      <p className="text-xs text-gray-500">Only download during the specified time range.</p>
                     </div>
-                    <div className={`grid grid-cols-2 gap-6 transition-all duration-300 ${!config.enable_download_window ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">Start Time</span>
-                        <div className="relative">
-                           <select
-                             className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
-                             value={config.retry_start_hour}
-                             onChange={e => setConfig({...config, retry_start_hour: parseInt(e.target.value) || 0})}
-                             disabled={!config.enable_download_window}
-                           >
-                             {Array.from({length: 25}, (_, i) => (
-                               <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                             ))}
-                           </select>
-                           <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none"/>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">End Time</span>
-                        <div className="relative">
-                           <select
-                             className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
-                             value={config.retry_end_hour}
-                             onChange={e => setConfig({...config, retry_end_hour: parseInt(e.target.value) || 0})}
-                             disabled={!config.enable_download_window}
-                           >
-                             {Array.from({length: 25}, (_, i) => (
-                               <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                             ))}
-                           </select>
-                           <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none"/>
-                        </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={config.enable_download_window}
+                        onChange={e => setConfig({...config, enable_download_window: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
+                    </label>
+                  </div>
+
+                  <div className={`grid grid-cols-2 gap-6 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] transition-all duration-300 ${!config.enable_download_window ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">Start Time</span>
+                      <div className="relative">
+                         <select
+                           className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-white dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
+                           value={config.retry_start_hour}
+                           onChange={e => setConfig({...config, retry_start_hour: parseInt(e.target.value) || 0})}
+                         >
+                           {Array.from({length: 25}, (_, i) => (
+                             <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                           ))}
+                         </select>
+                         <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none"/>
                       </div>
                     </div>
-                    <p className="text-[10px] text-gray-500 font-medium italic pl-1">
-                      Downloads will only be active between these hours.
-                    </p>
-                  </div>                </div>
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">End Time</span>
+                      <div className="relative">
+                         <select
+                           className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-white dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
+                           value={config.retry_end_hour}
+                           onChange={e => setConfig({...config, retry_end_hour: parseInt(e.target.value) || 0})}
+                         >
+                           {Array.from({length: 25}, (_, i) => (
+                             <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                           ))}
+                         </select>
+                         <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none"/>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-500 italic text-center px-4">
+                    Active downloads will pause outside this window and resume automatically when it opens.
+                  </p>
+                </div>
               </div>
             )}
 

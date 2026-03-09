@@ -33,9 +33,8 @@ class AppConfig:
     ))
     web_port: int = int(os.getenv("IPTV_PORT", "6767"))
     cache_expiry_hours: int = int(os.getenv("IPTV_CACHE_EXPIRY", "24"))
-    auto_retry_failed: bool = os.getenv("IPTV_AUTO_RETRY", "false").lower() == "true"
+    auto_retry_failed: bool = os.getenv("IPTV_AUTO_RETRY", "true").lower() == "true"
     max_retries: int = int(os.getenv("IPTV_MAX_RETRIES", "3"))
-    retry_forever: bool = os.getenv("IPTV_RETRY_FOREVER", "false").lower() == "true"
     enable_download_window: bool = os.getenv("IPTV_ENABLE_WINDOW", "false").lower() == "true"
     retry_start_hour: int = int(os.getenv("IPTV_RETRY_START", "4"))
     retry_end_hour: int = int(os.getenv("IPTV_RETRY_END", "9"))

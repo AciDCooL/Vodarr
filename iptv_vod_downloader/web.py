@@ -271,7 +271,6 @@ def init_downloader():
             user_agent=conf.user_agent,
             auto_retry=conf.auto_retry_failed,
             max_retries=conf.max_retries,
-            retry_forever=conf.retry_forever,
             enable_download_window=conf.enable_download_window,
             retry_start_hour=conf.retry_start_hour,
             retry_end_hour=conf.retry_end_hour,
@@ -324,7 +323,6 @@ class ConfigUpdate(BaseModel):
     cache_expiry_hours: Optional[int] = None
     auto_retry_failed: Optional[bool] = None
     max_retries: Optional[int] = None
-    retry_forever: Optional[bool] = None
     enable_download_window: Optional[bool] = None
     retry_start_hour: Optional[int] = None
     retry_end_hour: Optional[int] = None
@@ -438,7 +436,6 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
         download_manager.update_retry_settings(
             conf.auto_retry_failed, 
             conf.max_retries,
-            conf.retry_forever,
             conf.retry_start_hour,
             conf.retry_end_hour,
             conf.enable_download_window
