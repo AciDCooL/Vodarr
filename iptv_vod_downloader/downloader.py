@@ -500,6 +500,22 @@ class DownloadManager:
             return True
         return False
 
+    def reorder_queue(self, new_order: List[str]) -> None:
+        """Reorders the internal queue based on the provided list of queue_ids."""
+        with self._lock:
+            # Create a map for quick lookup
+            qid_map = {item.queue_id: item for item in self._queue}
+            # Reconstruct the queue based on the new order
+            new_queue = []
+            for qid in new_order:
+                if qid in qid_map:
+                    new_queue.append(qid_map[qid])
+            # Update the internal queue
+            self._queue[:] = new_queue
+            # Signal that items are available
+            if self._queue:
+                self._has_items.set()
+
     def _requeue_front(self, item: DownloadItem) -> None:
         with self._lock:
             self._queue.insert(0, item)

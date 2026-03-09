@@ -5,7 +5,7 @@ import {
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, 
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
-  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp
+  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp, GripVertical
 } from 'lucide-react';
 
 /**
@@ -120,6 +120,11 @@ const api = {
   controlQueue: (action: string) => fetch(`/api/queue/control/${action}`, { method: 'POST' }).then(r => r.json()),
   removeFromQueue: (queueId: string) => fetch(`/api/queue/${queueId}`, { method: 'DELETE' }).then(r => r.json()),
   restartItem: (queueId: string) => fetch(`/api/queue/restart/${queueId}`, { method: 'POST' }).then(r => r.json()),
+  reorderQueue: (queueIds: string[]) => fetch('/api/queue/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ queue_ids: queueIds })
+  }).then(r => r.json()),
   restartSystem: () => fetch('/api/system/restart', { method: 'POST' }).then(r => r.json()),
   shutdownSystem: () => fetch('/api/system/shutdown', { method: 'POST' }).then(r => r.json()),
 };
@@ -1391,6 +1396,40 @@ export default function App() {
     });
   };
 
+  // --- Drag and Drop Reordering ---
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
+  const handleDragStart = (idx: number) => {
+    dragItem.current = idx;
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    dragOverItem.current = idx;
+  };
+
+  const handleDrop = async () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    
+    const copyListItems = [...queue];
+    const dragItemContent = copyListItems[dragItem.current];
+    copyListItems.splice(dragItem.current, 1);
+    copyListItems.splice(dragOverItem.current, 0, dragItemContent);
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+    
+    setQueue(copyListItems);
+    
+    // Notify backend
+    try {
+      await api.reorderQueue(copyListItems.map(item => item.queue_id));
+    } catch (err) {
+      console.error('Failed to save new order', err);
+    }
+  };
+
   // --- Filtered Data Computations ---
 
   const filteredCats = Array.isArray(categories) ? categories.filter(c => 
@@ -1894,6 +1933,7 @@ export default function App() {
           <table className="w-full text-left border-collapse table-fixed md:table-auto">
             <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
               <tr>
+                <th className="w-8 md:w-12"></th>
                 <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-1/2 md:w-auto">Title</th>
                 <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hidden md:table-cell">Class</th>
                 <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
@@ -1902,8 +1942,19 @@ export default function App() {
               </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-800 text-[10px] md:text-sm">
-              {queue.map(item => (
-                <tr key={item.queue_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group">
+              {queue.map((item, idx) => (
+                <tr 
+                  key={item.queue_id} 
+                  draggable
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={handleDrop}
+                  onDragEnd={() => { dragItem.current = null; dragOverItem.current = null; }}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group cursor-default active:bg-blue-50 dark:active:bg-blue-900/10"
+                >
+                  <td className="pl-4 md:pl-8 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 cursor-grab active:cursor-grabbing">
+                    <GripVertical size={16} />
+                  </td>
                   <td className="px-4 md:px-8 py-2 md:py-3">
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
@@ -1968,7 +2019,7 @@ export default function App() {
               ))}
               {queue.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-8 py-12 text-center text-gray-400 dark:text-gray-600">
+                  <td colSpan={6} className="px-8 py-12 text-center text-gray-400 dark:text-gray-600">
                     <p className="font-black uppercase tracking-[0.3em] text-[8px] md:text-[10px]">Queue Empty</p>
                   </td>
                 </tr>

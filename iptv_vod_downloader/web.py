@@ -233,6 +233,10 @@ class QueueAddRequest(BaseModel):
     """Payload for adding one or more items to the download queue."""
     items: List[Dict[str, Any]]
 
+class ReorderRequest(BaseModel):
+    """Payload for reordering the queue."""
+    queue_ids: List[str]
+
 # --- API Endpoints ---
 
 @app.get("/api/config")
@@ -492,6 +496,31 @@ async def add_to_queue(request: QueueAddRequest):
     download_manager.add_items(new_items)
     save_queue_state()
     return {"status": "success", "added": len(new_items)}
+
+@app.post("/api/queue/reorder")
+async def reorder_queue(request: ReorderRequest):
+    """Reorders the items in the queue."""
+    global queue_items
+    if not download_manager:
+        raise HTTPException(status_code=500, detail="Downloader not initialized")
+    
+    # Update the internal manager queue
+    download_manager.reorder_queue(request.queue_ids)
+    
+    # Update the in-memory mirror to reflect the new order
+    new_mirror = {}
+    for qid in request.queue_ids:
+        if qid in queue_items:
+            new_mirror[qid] = queue_items[qid]
+    
+    # Add back any completed/failed items that weren't in the reorder request
+    for qid, item in queue_items.items():
+        if qid not in new_mirror:
+            new_mirror[qid] = item
+            
+    queue_items = new_mirror
+    save_queue_state()
+    return {"status": "success"}
 
 @app.post("/api/queue/control/{action}")
 async def control_queue(action: str):
