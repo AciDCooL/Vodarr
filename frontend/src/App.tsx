@@ -5,7 +5,8 @@ import {
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, 
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
-  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp, GripVertical
+  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp, GripVertical,
+  Maximize2, Minimize2
 } from 'lucide-react';
 
 /**
@@ -1303,6 +1304,7 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
+  const [isQueueMaximized, setIsQueueMaximized] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
@@ -1931,9 +1933,13 @@ export default function App() {
       </main>
 
       {/* FOOTER - Responsive Queue */}
-      <footer className={`${showQueue ? 'h-[80vh]' : 'h-16'} md:h-80 bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl z-50 transition-all duration-500 ease-in-out overflow-hidden`}>
+      <footer className={`${
+        isQueueMaximized 
+          ? 'fixed inset-0 z-[150] h-full' 
+          : `fixed bottom-0 left-0 right-0 z-50 ${showQueue ? 'h-[80vh] md:h-80' : 'h-16'}`
+      } bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl transition-all duration-500 ease-in-out overflow-hidden`}>
         <div 
-          onClick={() => window.innerWidth < 768 && setShowQueue(!showQueue)}
+          onClick={() => !isQueueMaximized && window.innerWidth < 768 && setShowQueue(!showQueue)}
           className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-pointer md:cursor-default flex-shrink-0"
         >
           <div className="flex items-center gap-3 md:gap-8 min-w-0">
@@ -1990,6 +1996,14 @@ export default function App() {
             
             <button onClick={(e) => { e.stopPropagation(); api.controlQueue('stop'); }} title="Stop All" className="p-2 md:p-2.5 bg-red-600 text-white rounded-lg md:rounded-xl hover:bg-red-700 transition-all active:scale-90 shadow-lg shadow-red-500/20 hidden sm:block"><Square size={16}/></button>
             <button onClick={(e) => { e.stopPropagation(); handleClearAll(); }} title="Wipe Queue" className="p-2 md:p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg md:rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-sm hidden md:block"><Trash2 size={16}/></button>
+
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsQueueMaximized(!isQueueMaximized); if (!showQueue) setShowQueue(true); }}
+              title={isQueueMaximized ? "Minimize" : "Maximize"}
+              className="p-2 md:p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-lg md:rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-90 hidden sm:block"
+            >
+              {isQueueMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
+            </button>
 
             <button 
               onClick={(e) => { e.stopPropagation(); setShowQueue(!showQueue); }}
