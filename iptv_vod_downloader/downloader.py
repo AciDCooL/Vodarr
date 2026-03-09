@@ -110,6 +110,7 @@ class DownloadManager:
         self.auto_retry = auto_retry
         self.max_retries = max_retries
         self.retry_forever = retry_forever
+        self.enable_download_window = enable_download_window
         self.retry_start_hour = retry_start_hour
         self.retry_end_hour = retry_end_hour
         self.url_builder = url_builder
@@ -121,12 +122,13 @@ class DownloadManager:
     def update_user_agent(self, user_agent: str) -> None:
         self._user_agent = user_agent
 
-    def update_retry_settings(self, auto_retry: bool, max_retries: int, retry_forever: bool, start_hour: int, end_hour: int) -> None:
+    def update_retry_settings(self, auto_retry: bool, max_retries: int, retry_forever: bool, start_hour: int, end_hour: int, enable_window: bool = False) -> None:
         self.auto_retry = auto_retry
         self.max_retries = max_retries
         self.retry_forever = retry_forever
         self.retry_start_hour = start_hour
         self.retry_end_hour = end_hour
+        self.enable_download_window = enable_window
 
     def start(self) -> None:
         if self._worker and self._worker.is_alive():
@@ -232,7 +234,7 @@ class DownloadManager:
 
     def _is_in_download_window(self) -> bool:
         """Checks if current local time is within the allowed download window."""
-        if self.retry_start_hour == 0 and self.retry_end_hour == 24:
+        if not self.enable_download_window:
             return True
         
         now = datetime.datetime.now().hour

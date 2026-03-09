@@ -25,9 +25,11 @@ interface Config {
   auto_retry_failed: boolean;
   max_retries: number;
   retry_forever: boolean;
+  enable_download_window: boolean;
   retry_start_hour: number;
   retry_end_hour: number;
   is_complete: boolean;
+  is_in_window: boolean;
 }
 
 interface Category {
@@ -726,10 +728,22 @@ function SettingsModal({
                   </div>
 
                   <div className="space-y-4 pt-4 border-t dark:border-gray-800">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-2">
-                      <Clock size={12}/> Download Window (Allowed Hours)
-                    </label>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-2">
+                        <Clock size={12}/> Download Window (Allowed Hours)
+                      </label>
+                      <label className="relative inline-flex items-center cursor-pointer group">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={config.enable_download_window}
+                          onChange={e => setConfig({...config, enable_download_window: e.target.checked})}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
+                        <span className="ml-3 text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200">Enable</span>
+                      </label>
+                    </div>
+                    <div className={`grid grid-cols-2 gap-6 transition-all duration-300 ${!config.enable_download_window ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
                       <div className="space-y-2">
                         <span className="text-[10px] font-bold text-gray-400 uppercase pl-1">Start Time</span>
                         <div className="relative">
@@ -737,6 +751,7 @@ function SettingsModal({
                              className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
                              value={config.retry_start_hour}
                              onChange={e => setConfig({...config, retry_start_hour: parseInt(e.target.value) || 0})}
+                             disabled={!config.enable_download_window}
                            >
                              {Array.from({length: 25}, (_, i) => (
                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
@@ -752,6 +767,7 @@ function SettingsModal({
                              className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-sm cursor-pointer"
                              value={config.retry_end_hour}
                              onChange={e => setConfig({...config, retry_end_hour: parseInt(e.target.value) || 0})}
+                             disabled={!config.enable_download_window}
                            >
                              {Array.from({length: 25}, (_, i) => (
                                <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
@@ -762,7 +778,7 @@ function SettingsModal({
                       </div>
                     </div>
                     <p className="text-[10px] text-gray-500 font-medium italic pl-1">
-                      Downloads will only be active between these hours. Set 00:00 to 24:00 for no restriction.
+                      Downloads will only be active between these hours.
                     </p>
                   </div>                </div>
               </div>
@@ -1858,10 +1874,31 @@ export default function App() {
                   </span>
                 </div>
               )}
+
+              {config?.enable_download_window && (
+                <div className={`px-3 py-1 rounded-full flex items-center gap-2 shadow-inner flex-shrink-0 ${config.is_in_window ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+                  <Clock size={10} className={config.is_in_window ? 'text-blue-600' : 'text-amber-600'} />
+                  <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest ${config.is_in_window ? 'text-blue-700 dark:text-blue-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                    {config.is_in_window ? 'Window: Open' : 'Window: Closed'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-1 md:gap-2">
-            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('start'); }} title="Start All" className="p-2 md:p-2.5 bg-green-600 text-white rounded-lg md:rounded-xl hover:bg-green-700 transition-all active:scale-90 shadow-lg shadow-green-500/20"><Play size={16}/></button>
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (config?.enable_download_window && !config.is_in_window) {
+                  setToast({ message: `Queue started, but waiting for window (${config.retry_start_hour:02d}:00 - ${config.retry_end_hour:02d}:00)`, type: 'info' });
+                }
+                api.controlQueue('start'); 
+              }} 
+              title="Start All" 
+              className="p-2 md:p-2.5 bg-green-600 text-white rounded-lg md:rounded-xl hover:bg-green-700 transition-all active:scale-90 shadow-lg shadow-green-500/20"
+            >
+              <Play size={16}/>
+            </button>
             <button onClick={(e) => { e.stopPropagation(); api.controlQueue('pause'); }} title="Pause All" className="p-2 md:p-2.5 bg-amber-500 text-white rounded-lg md:rounded-xl hover:bg-amber-600 transition-all active:scale-90 shadow-lg shadow-amber-500/20"><Pause size={16}/></button>
             <button onClick={(e) => { e.stopPropagation(); api.controlQueue('restart-failed'); }} title="Retry Failures" className="p-2 md:p-2.5 bg-blue-600 text-white rounded-lg md:rounded-xl hover:bg-blue-700 transition-all active:scale-90 shadow-lg shadow-blue-500/20"><RefreshCw size={16}/></button>
             <button onClick={(e) => { e.stopPropagation(); api.controlQueue('clear-completed'); }} title="Prune Completed" className="p-2 md:p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg md:rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all active:scale-90 shadow-sm"><Check size={16}/></button>

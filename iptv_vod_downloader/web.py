@@ -224,6 +224,7 @@ class ConfigUpdate(BaseModel):
     auto_retry_failed: Optional[bool] = None
     max_retries: Optional[int] = None
     retry_forever: Optional[bool] = None
+    enable_download_window: Optional[bool] = None
     retry_start_hour: Optional[int] = None
     retry_end_hour: Optional[int] = None
 
@@ -239,6 +240,13 @@ async def get_config():
     from dataclasses import asdict
     data = asdict(current_config)
     data["is_complete"] = current_config.is_complete()
+    
+    # Check if download window is currently open
+    is_in_window = True
+    if download_manager:
+        is_in_window = download_manager._is_in_download_window()
+    data["is_in_window"] = is_in_window
+    
     return data
 
 @app.post("/api/config")
@@ -264,7 +272,8 @@ async def update_config(update: ConfigUpdate):
             conf.max_retries,
             conf.retry_forever,
             conf.retry_start_hour,
-            conf.retry_end_hour
+            conf.retry_end_hour,
+            conf.enable_download_window
         )
     
     resp_data = asdict(conf)
