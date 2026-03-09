@@ -207,7 +207,7 @@ function SafeImage({
 function Toast({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) {
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(onClose, 4000);
+    const timer = setTimeout(onClose, 1000);
     return () => clearTimeout(timer);
   }, [message, onClose]);
 
