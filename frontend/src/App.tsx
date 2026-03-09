@@ -32,6 +32,9 @@ interface Config {
   connect_timeout: number;
   read_timeout: number;
   media_management: boolean;
+  admin_username: string;
+  admin_password?: string;
+  auth_bypass_local: boolean;
   is_complete: boolean;
   is_in_window: boolean;
 }
@@ -93,16 +96,44 @@ type ViewMode = 'poster' | 'compact' | 'thin';
 // --- API Client Helpers ---
 
 const api = {
-  getConfig: () => fetch('/api/config').then(r => r.json()),
-  updateConfig: (config: Partial<Config>) => fetch('/api/config', {
+  getAuthToken: () => localStorage.getItem('vodarr_token'),
+  setAuthToken: (token: string) => localStorage.setItem('vodarr_token', token),
+  clearAuthToken: () => localStorage.removeItem('vodarr_token'),
+
+  request: async (url: string, options: RequestInit = {}) => {
+    const token = api.getAuthToken();
+    const headers = {
+      ...(options.headers || {}),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    const resp = await fetch(url, { ...options, headers });
+    if (resp.status === 401) {
+      const isLoginRequest = url.includes('/api/auth/login') || url.includes('/api/auth/status');
+      if (!isLoginRequest) {
+        api.clearAuthToken();
+        window.location.reload();
+      }
+    }
+    return resp;
+  },
+
+  getAuthStatus: () => api.request('/api/auth/status').then(r => r.json()),
+  login: (credentials: any) => fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials)
+  }).then(r => r.json()),
+
+  getConfig: () => api.request('/api/config').then(r => r.json()),
+  updateConfig: (config: Partial<Config>) => api.request('/api/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config)
   }).then(r => r.json()),
-  getUAPresets: () => fetch('/api/common-user-agents').then(r => r.json()),
-  testConnection: () => fetch('/api/test-connection').then(r => r.json()),
-  getAccountInfo: () => fetch('/api/account').then(r => r.json()),
-  getCategories: (kind: 'movies' | 'series', refresh: boolean = false) => fetch(`/api/categories/${kind}${refresh ? '?refresh=true' : ''}`).then(r => r.json()),
+  getUAPresets: () => api.request('/api/common-user-agents').then(r => r.json()),
+  testConnection: () => api.request('/api/test-connection').then(r => r.json()),
+  getAccountInfo: () => api.request('/api/account').then(r => r.json()),
+  getCategories: (kind: 'movies' | 'series', refresh: boolean = false) => api.request(`/api/categories/${kind}${refresh ? '?refresh=true' : ''}`).then(r => r.json()),
   getItems: (kind: 'movies' | 'series', catId: string, search?: string, offset: number = 0, limit: number = 50, refresh: boolean = false) => {
     const params = new URLSearchParams({
       offset: offset.toString(),
@@ -110,27 +141,27 @@ const api = {
     });
     if (search) params.append('search', search);
     if (refresh) params.append('refresh', 'true');
-    return fetch(`/api/items/${kind}/${catId}?${params.toString()}`).then(r => r.json());
+    return api.request(`/api/items/${kind}/${catId}?${params.toString()}`).then(r => r.json());
   },
-  getSeriesInfo: (seriesId: string) => fetch(`/api/series/${seriesId}`).then(r => r.json()),
-  getMovieInfo: (streamId: string) => fetch(`/api/movie/${streamId}`).then(r => r.json()),
-  browseFolders: (path?: string) => fetch(`/api/browse-folders?path=${encodeURIComponent(path || '')}`).then(r => r.json()),
-  getQueue: () => fetch('/api/queue').then(r => r.json()),
-  addToQueue: (items: any[]) => fetch('/api/queue/add', {
+  getSeriesInfo: (seriesId: string) => api.request(`/api/series/${seriesId}`).then(r => r.json()),
+  getMovieInfo: (streamId: string) => api.request(`/api/movie/${streamId}`).then(r => r.json()),
+  browseFolders: (path?: string) => api.request(`/api/browse-folders?path=${encodeURIComponent(path || '')}`).then(r => r.json()),
+  getQueue: () => api.request('/api/queue').then(r => r.json()),
+  addToQueue: (items: any[]) => api.request('/api/queue/add', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ items })
   }).then(r => r.json()),
-  controlQueue: (action: string) => fetch(`/api/queue/control/${action}`, { method: 'POST' }).then(r => r.json()),
-  removeFromQueue: (queueId: string) => fetch(`/api/queue/${queueId}`, { method: 'DELETE' }).then(r => r.json()),
-  restartItem: (queueId: string) => fetch(`/api/queue/restart/${queueId}`, { method: 'POST' }).then(r => r.json()),
-  reorderQueue: (queueIds: string[]) => fetch('/api/queue/reorder', {
+  controlQueue: (action: string) => api.request(`/api/queue/control/${action}`, { method: 'POST' }).then(r => r.json()),
+  removeFromQueue: (queueId: string) => api.request(`/api/queue/${queueId}`, { method: 'DELETE' }).then(r => r.json()),
+  restartItem: (queueId: string) => api.request(`/api/queue/restart/${queueId}`, { method: 'POST' }).then(r => r.json()),
+  reorderQueue: (queueIds: string[]) => api.request('/api/queue/reorder', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ queue_ids: queueIds })
   }).then(r => r.json()),
-  restartSystem: () => fetch('/api/system/restart', { method: 'POST' }).then(r => r.json()),
-  shutdownSystem: () => fetch('/api/system/shutdown', { method: 'POST' }).then(r => r.json()),
+  restartSystem: () => api.request('/api/system/restart', { method: 'POST' }).then(r => r.json()),
+  shutdownSystem: () => api.request('/api/system/shutdown', { method: 'POST' }).then(r => r.json()),
 };
 
 // --- Helper Formatting ---
@@ -350,6 +381,83 @@ function FolderSelectorModal({
   );
 }
 
+// --- Login Modal Component ---
+
+function LoginModal({ onLogin }: { onQueue?: any, onLogin: () => void }) {
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.login({ username, password });
+      if (data.access_token) {
+        api.setAuthToken(data.access_token);
+        onLogin();
+      } else {
+        setError(data.detail || 'Login failed');
+      }
+    } catch (err) {
+      setError('Connection failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-2xl z-[500] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden border dark:border-gray-800 animate-in zoom-in-95 duration-500">
+        <div className="p-10 md:p-12 space-y-10">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white mx-auto shadow-2xl shadow-blue-500/40 animate-bounce-slow">
+              <ShieldCheck size={40} />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-none">Identity Check</h2>
+              <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mt-3">Authentication Required</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Username</label>
+              <input 
+                autoFocus
+                className="w-full border-none rounded-2xl px-6 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Password</label>
+              <input 
+                type="password"
+                className="w-full border-none rounded-2xl px-6 py-4 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+            </div>
+
+            {error && <p className="text-xs font-bold text-red-500 text-center bg-red-50 dark:bg-red-900/20 py-3 rounded-xl border border-red-100 dark:border-red-800/50">{error}</p>}
+
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/40 active:scale-95 disabled:opacity-50"
+            >
+              {loading ? <RefreshCw className="animate-spin mx-auto" size={18} /> : 'Unlock Application'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Setup Wizard Component ---
 
 function SetupWizard({ 
@@ -440,6 +548,29 @@ function SetupWizard({
                 </button>
               </div>
             </div>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1 text-center block">Identity & Security</label>
+              <div className="grid grid-cols-2 gap-6 bg-blue-50/50 dark:bg-blue-900/10 p-6 rounded-[2rem] border border-blue-100 dark:border-blue-800/50">
+                <div className="space-y-2">
+                  <label className="text-[8px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 ml-1">Admin User</label>
+                  <input 
+                    className="w-full border-none rounded-xl px-4 py-3 bg-white dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold"
+                    value={config.admin_username} 
+                    onChange={e => setConfig({...config, admin_username: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[8px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 ml-1">Admin Password</label>
+                  <input 
+                    type="password"
+                    className="w-full border-none rounded-xl px-4 py-3 bg-white dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold"
+                    placeholder="Set password"
+                    value={config.admin_password || ''} 
+                    onChange={e => setConfig({...config, admin_password: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="pt-6">
@@ -474,7 +605,7 @@ function SettingsModal({
   uaPresets: Record<string, string>,
   onTest: () => void
 }) {
-  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'automation' | 'system'>('server');
+  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'automation' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [accountInfo, setAccountInfo] = useState<any>(null);
 
@@ -492,9 +623,15 @@ function SettingsModal({
 
   if (!config) return null;
 
+  const handleLogout = () => {
+    api.clearAuthToken();
+    window.location.reload();
+  };
+
   const groups = [
     { id: 'server', label: 'Server & API', icon: <Server size={18} /> },
     { id: 'downloads', label: 'Downloads', icon: <HardDrive size={18} /> },
+    { id: 'security', label: 'Security', icon: <ShieldCheck size={18} /> },
     { id: 'automation', label: 'Retry & Automation', icon: <Zap size={18} /> },
     { id: 'system', label: 'System', icon: <Power size={18} /> },
   ] as const;
@@ -831,6 +968,63 @@ function SettingsModal({
                       Downloads will only be active between these hours.
                     </p>
                   </div>                </div>
+              </div>
+            )}
+
+            {activeGroup === 'security' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Identity & Security</h3>
+                  <p className="text-sm text-gray-500">Manage administrative access and authentication policies.</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Admin Username</label>
+                      <input 
+                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                        value={config.admin_username} 
+                        onChange={e => setConfig({...config, admin_username: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Change Password</label>
+                      <input 
+                        type="password"
+                        placeholder="Leave blank to keep current"
+                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium italic"
+                        value={config.admin_password || ''} 
+                        onChange={e => setConfig({...config, admin_password: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-[2rem] border border-blue-100 dark:border-blue-800/50">
+                    <div className="space-y-1">
+                      <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Local Address Bypass</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">Disable authentication for requests originating from local networks (LAN).</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={config.auth_bypass_local}
+                        onChange={e => setConfig({...config, auth_bypass_local: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
+                    </label>
+                  </div>
+
+                  <div className="pt-4">
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full py-4 bg-gray-100 dark:bg-gray-800 text-red-500 dark:text-red-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-red-50 dark:hover:bg-red-900/20 transition-all active:scale-95 flex items-center justify-center gap-3 border border-transparent hover:border-red-500/20"
+                    >
+                      <Power size={16}/> Terminate Current Session
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1316,6 +1510,8 @@ function EpisodeSelectorModal({
 export default function App() {
   // Application State
   const [config, setConfig] = useState<Config | null>(null);
+  const [authStatus, setAuthStatus] = useState<{ is_authenticated: boolean, username?: string, bypass_active?: boolean } | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
   const [uaPresets, setUAPresets] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<'movies' | 'series'>('movies');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1347,7 +1543,6 @@ export default function App() {
   const LIMIT = 50;
   const queuePollRef = useRef<any>(null);
 
-  // Initialize: Fetch settings and UA presets
   const fetchConfig = useCallback(async () => {
     try {
       const data = await api.getConfig();
@@ -1358,8 +1553,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchConfig();
-    api.getUAPresets().then(setUAPresets).catch(console.error);
+    const init = async () => {
+      try {
+        const auth = await api.getAuthStatus();
+        setAuthStatus(auth);
+        if (auth.is_authenticated) {
+          fetchConfig();
+          const presets = await api.getUAPresets();
+          setUAPresets(presets);
+        } else {
+          setShowLogin(true);
+        }
+      } catch (err) {
+        console.error('Auth check failed', err);
+      }
+    };
+    init();
   }, [fetchConfig]);
 
   // Dark mode side effect
@@ -1623,17 +1832,26 @@ export default function App() {
 
   if (config && !config.is_complete) {
     return (
-      <SetupWizard 
-        config={config}
-        setConfig={setConfig}
-        onSave={handleSaveConfig}
-      />
+      <div className={`min-h-screen ${isDarkMode ? 'dark' : ''}`}>
+        <SetupWizard
+          config={config}
+          setConfig={setConfig}
+          onSave={handleSaveConfig}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden text-sm transition-colors duration-200 font-sans tracking-tight text-gray-900 dark:text-gray-100">
-      {/* HEADER */}
+    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} flex flex-col h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden text-sm transition-colors duration-200 font-sans tracking-tight text-gray-900 dark:text-gray-100`}>
+      {/* AUTHENTICATION LAYER */}
+      {showLogin && authStatus && !authStatus.is_authenticated && config?.is_complete && (
+        <LoginModal onLogin={() => {
+          setShowLogin(false);
+          fetchConfig();
+          api.getUAPresets().then(setUAPresets);
+        }} />
+      )}      {/* HEADER */}
       <header className="bg-white dark:bg-gray-900 border-b dark:border-gray-800 px-4 md:px-8 py-3 md:py-5 shadow-sm flex items-center justify-between z-30">
         <div className="flex items-center gap-3 md:gap-4">
           <button 

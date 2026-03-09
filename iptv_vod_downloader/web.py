@@ -10,12 +10,17 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+import datetime
+import ipaddress
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Depends, status
+from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 from .api import IPTVClient, APIError
 from .config import AppConfig, COMMON_USER_AGENTS
@@ -24,7 +29,27 @@ from .cache import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+# --- Authentication Logic ---
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
+
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class AuthStatus(BaseModel):
+    is_authenticated: bool
+    username: Optional[str] = None
+    bypass_active: bool = False
+
+# --- API Models ---
 app = FastAPI(title="Vodarr API")
 
 # --- Global State Management ---
@@ -37,6 +62,64 @@ download_manager: Optional[DownloadManager] = None
 
 # Current config instance
 current_config = AppConfig()
+
+def is_local_request(request: Request) -> bool:
+    """Checks if the request originates from a local IP address."""
+    try:
+        client_host = request.client.host if request.client else "127.0.0.1"
+        # Handle cases like "::1"
+        if client_host == "::1":
+            return True
+        ip = ipaddress.ip_address(client_host)
+        return ip.is_loopback or ip.is_private
+    except:
+        return False
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, current_config.secret_key, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
+    # Check bypass
+    if current_config.auth_bypass_local and is_local_request(request):
+        return current_config.admin_username
+
+    if not current_config.admin_password_hash:
+        # If no password set, auth is disabled (initial setup state)
+        return "admin"
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not token:
+        raise credentials_exception
+        
+    try:
+        payload = jwt.decode(token, current_config.secret_key, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+        
+    if username != current_config.admin_username:
+        raise credentials_exception
+        
+    return username
 
 def load_app_config():
     """Loads configuration from database and merges with environment defaults."""
@@ -233,6 +316,11 @@ class ConfigUpdate(BaseModel):
     connect_timeout: Optional[int] = None
     read_timeout: Optional[int] = None
     media_management: Optional[bool] = None
+    
+    # Auth
+    admin_username: Optional[str] = None
+    admin_password: Optional[str] = None
+    auth_bypass_local: Optional[bool] = None
 
 class QueueAddRequest(BaseModel):
     """Payload for adding one or more items to the download queue."""
@@ -245,7 +333,7 @@ class ReorderRequest(BaseModel):
 # --- API Endpoints ---
 
 @app.get("/api/config")
-async def get_config():
+async def get_config(user: str = Depends(get_current_user)):
     """Returns the current application configuration."""
     from dataclasses import asdict
     data = asdict(current_config)
@@ -257,7 +345,51 @@ async def get_config():
         is_in_window = download_manager._is_in_download_window()
     data["is_in_window"] = is_in_window
     
+    # Mask sensitive data
+    data.pop("admin_password_hash", None)
+    data.pop("secret_key", None)
+    
     return data
+
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    if not current_config.admin_password_hash:
+        # If password hash is empty, it means we're in setup mode.
+        # But we don't want to allow login until it's set.
+        raise HTTPException(status_code=400, detail="Authentication not setup")
+        
+    if request.username != current_config.admin_username or not verify_password(request.password, current_config.admin_password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+        
+    access_token_expires = datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": request.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/api/auth/status")
+async def auth_status(request: Request, token: str = Depends(oauth2_scheme)):
+    bypass = current_config.auth_bypass_local and is_local_request(request)
+    
+    if bypass:
+        return AuthStatus(is_authenticated=True, username=current_config.admin_username, bypass_active=True)
+        
+    if not current_config.admin_password_hash:
+        # No password set yet -> in Setup Wizard / Open mode
+        return AuthStatus(is_authenticated=True, username="admin", bypass_active=False)
+
+    if not token:
+        return AuthStatus(is_authenticated=False)
+        
+    try:
+        payload = jwt.decode(token, current_config.secret_key, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username == current_config.admin_username:
+            return AuthStatus(is_authenticated=True, username=username, bypass_active=False)
+    except:
+        pass
+        
+    return AuthStatus(is_authenticated=False)
 
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate):

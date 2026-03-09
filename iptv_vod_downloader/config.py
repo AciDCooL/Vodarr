@@ -42,6 +42,12 @@ class AppConfig:
     connect_timeout: int = int(os.getenv("IPTV_CONNECT_TIMEOUT", "5"))
     read_timeout: int = int(os.getenv("IPTV_READ_TIMEOUT", "10"))
     media_management: bool = os.getenv("IPTV_MEDIA_MANAGEMENT", "false").lower() == "true"
+    
+    # --- AUTHENTICATION ---
+    admin_username: str = os.getenv("IPTV_ADMIN_USER", "admin")
+    admin_password_hash: str = "" # Stored hashed in DB
+    auth_bypass_local: bool = os.getenv("IPTV_AUTH_BYPASS_LOCAL", "true").lower() == "true"
+    secret_key: str = os.getenv("IPTV_SECRET_KEY", os.urandom(32).hex())
 
     def is_complete(self) -> bool:
         """Return True when the configuration looks usable."""
