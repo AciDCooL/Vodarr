@@ -1994,11 +1994,6 @@ export default function App() {
                     <div className="flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] md:text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.title}>{item.title}</span>
-                        {item.total_size > 0 && (
-                          <span className="text-[8px] md:text-[10px] font-bold text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 hidden xs:inline bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md">
-                            {formatSize(item.total_size)}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </td>
@@ -2036,13 +2031,20 @@ export default function App() {
                     </div>
                   </td>
                   <td className="px-4 md:px-8 py-2 md:py-3 hidden sm:table-cell">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 md:h-2.5 overflow-hidden border dark:border-gray-700">
-                        <div className={`h-full transition-all duration-500 ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${item.progress * 100}%` }}/>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 md:h-2.5 overflow-hidden border dark:border-gray-700">
+                          <div className={`h-full transition-all duration-500 ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${item.progress * 100}%` }}/>
+                        </div>
+                        <span className="text-[9px] md:text-[11px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
+                          {Math.round(item.progress * 100)}%
+                        </span>
                       </div>
-                      <span className="text-[9px] md:text-[11px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
-                        {Math.round(item.progress * 100)}%
-                      </span>
+                      {item.total_size > 0 && (
+                        <p className="text-[8px] md:text-[9px] font-bold text-gray-400 dark:text-gray-500 tabular-nums text-right px-1">
+                          {formatSize(item.downloaded_bytes)} / {formatSize(item.total_size)}
+                        </p>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 md:px-8 py-2 md:py-3 text-center">
