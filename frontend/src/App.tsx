@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
-  Download, Pause, Play, Trash2, RefreshCw, Search, X, 
+  Download, Pause, Play, Square, Trash2, RefreshCw, Search, X, 
   Settings, Server, Folder, 
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, Info,
@@ -1435,6 +1435,17 @@ export default function App() {
     setToast({ message: 'Catalog cache cleared', type: 'info' });
   };
 
+  const handleClearAll = async () => {
+    setConfirm({
+      title: 'Empty Queue',
+      message: 'Are you sure you want to empty the entire download queue? This will stop all active downloads.',
+      onConfirm: async () => {
+        await api.controlQueue('clear-all');
+        setConfirm(null);
+        setToast({ message: 'Queue emptied', type: 'success' });
+      }
+    });
+  };
 
   // --- Filtered Data Computations ---
 
@@ -1875,11 +1886,16 @@ export default function App() {
             </div>
           </div>
           <div className="flex gap-1 md:gap-2">
-            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('start'); }} className="p-2 md:p-2.5 bg-green-600 text-white rounded-lg md:rounded-xl hover:bg-green-700 transition-all active:scale-90 shadow-lg shadow-green-500/20"><Play size={16}/></button>
-            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('pause'); }} className="p-2 md:p-2.5 bg-amber-500 text-white rounded-lg md:rounded-xl hover:bg-amber-600 transition-all active:scale-90 shadow-lg shadow-amber-500/20"><Pause size={16}/></button>
+            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('start'); }} title="Start All" className="p-2 md:p-2.5 bg-green-600 text-white rounded-lg md:rounded-xl hover:bg-green-700 transition-all active:scale-90 shadow-lg shadow-green-500/20"><Play size={16}/></button>
+            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('pause'); }} title="Pause All" className="p-2 md:p-2.5 bg-amber-500 text-white rounded-lg md:rounded-xl hover:bg-amber-600 transition-all active:scale-90 shadow-lg shadow-amber-500/20"><Pause size={16}/></button>
+            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('stop'); }} title="Stop All" className="p-2 md:p-2.5 bg-red-600 text-white rounded-lg md:rounded-xl hover:bg-red-700 transition-all active:scale-90 shadow-lg shadow-red-500/20 hidden sm:block"><Square size={16}/></button>
             
             <div className="w-px h-6 md:h-8 bg-gray-200 dark:bg-gray-800 mx-1 md:mx-2 hidden sm:block"></div>
             
+            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('restart-failed'); }} title="Retry Failures" className="p-2 md:p-2.5 bg-blue-600 text-white rounded-lg md:rounded-xl hover:bg-blue-700 transition-all active:scale-90 shadow-lg shadow-blue-500/20 hidden md:block"><RefreshCw size={16}/></button>
+            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('clear-completed'); }} title="Prune Completed" className="p-2 md:p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg md:rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all active:scale-90 shadow-sm hidden md:block"><Check size={16}/></button>
+            <button onClick={(e) => { e.stopPropagation(); handleClearAll(); }} title="Wipe Queue" className="p-2 md:p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg md:rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-sm hidden md:block"><Trash2 size={16}/></button>
+
             <button 
               onClick={(e) => { e.stopPropagation(); setShowQueue(!showQueue); }}
               className="p-2 md:hidden text-gray-400"
@@ -1889,7 +1905,7 @@ export default function App() {
           </div>
         </div>
         
-        <div className="flex-1 overflow-auto bg-white dark:bg-gray-950">
+        <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
           <table className="w-full text-left border-collapse table-fixed md:table-auto">
             <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
               <tr>
