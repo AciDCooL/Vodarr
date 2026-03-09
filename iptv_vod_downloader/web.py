@@ -447,30 +447,38 @@ async def add_to_queue(request: QueueAddRequest):
     new_items = []
     c = get_client()
     for data in request.items:
-        # For movies, try to get the real extension from the API first
-        item_id = str(data["item_id"])
-        kind = data.get("kind", "movie")
-        
-        original_ext = "mp4" # Default
-        fallbacks = ["mkv", "mp4", "avi"]
+        # 1. Determine best extension from account info
+        allowed_fmts = ["mkv", "mp4", "avi", "ts"]
+        try:
+            acc = c.check_connection()
+            if "user_info" in acc and "allowed_output_formats" in acc["user_info"]:
+                allowed_fmts = acc["user_info"]["allowed_output_formats"]
+        except:
+            pass
+
+        original_ext = allowed_fmts[0] if allowed_fmts else "mp4"
         
         if kind == "movies":
             try:
                 info = c.get_vod_info(item_id)
+                # Use real extension if provider gives it
                 if "container_extension" in info:
                     original_ext = info["container_extension"]
+                # Capture duration for metadata
+                if "info" in info and "duration_secs" in info["info"]:
+                    meta["duration_secs"] = info["info"]["duration_secs"]
             except:
-                pass # Fallback to default
+                pass
         
-        # Extract original extension for dynamic URL building
+        # 2. Extract extension from stream_url if present
         stream_url = data["stream_url"]
         if "." in stream_url:
             url_ext = stream_url.split(".")[-1]
             if len(url_ext) <= 4:
                 original_ext = url_ext
         
-        if original_ext in fallbacks:
-            fallbacks.remove(original_ext)
+        # 3. Build fallbacks from allowed formats
+        fallbacks = [f for f in allowed_fmts if f != original_ext]
 
         meta = data.get("meta", {})
         meta["original_extension"] = original_ext

@@ -52,6 +52,7 @@ interface Item {
   releaseDate?: string;
   rating?: string;
   duration?: string;
+  duration_secs?: number;
   tmdb_id?: string;
   rating_5based?: number;
 }
@@ -928,7 +929,9 @@ function ItemDetailsModal({
               <div className="flex items-center gap-6 text-gray-500 dark:text-gray-400 font-bold text-sm">
                 <div className="flex items-center gap-2">
                   <Clock size={16} />
-                  <span>{info.duration || info.last_modified || 'N/A'}</span>
+                  <span>
+                    {info.duration_secs ? `${Math.floor(info.duration_secs / 60)}m` : (info.duration || info.last_modified || 'N/A')}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar size={16} />
