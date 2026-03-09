@@ -35,7 +35,6 @@ interface Config {
 interface Category {
   category_id: string;
   category_name: string;
-  parent_id: number;
 }
 
 interface Item {
@@ -125,6 +124,35 @@ const api = {
   shutdownSystem: () => fetch('/api/system/shutdown', { method: 'POST' }).then(r => r.json()),
 };
 
+// --- Helper Formatting ---
+
+const formatSize = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const formatSpeed = (bps: number) => {
+  if (bps <= 0) return '';
+  return `${formatSize(bps)}/s`;
+};
+
+const formatETA = (seconds: number) => {
+  if (seconds <= 0 || !isFinite(seconds)) return '';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins}m ${Math.round(seconds % 60)}s`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}h ${mins % 60}m`;
+};
+
+const sanitiseFilename = (name: string): string => {
+  if (!name) return '';
+  return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim();
+};
+
 // --- Safe Image Component ---
 
 function SafeImage({ 
@@ -170,23 +198,21 @@ function SafeImage({
 function Toast({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) {
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(onClose, 1000);
+    const timer = setTimeout(onClose, 4000);
     return () => clearTimeout(timer);
-  }, [onClose, message]);
+  }, [message, onClose]);
 
   if (!message) return null;
 
-  const icons = {
-    success: <CheckCircle2 className="text-green-500" />,
-    error: <AlertCircle className="text-red-500" />,
-    info: <Info className="text-blue-500" />
-  };
-
   return (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-bottom-4">
-      <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-2xl border dark:border-gray-700 px-6 py-4 flex items-center gap-4 min-w-[300px]">
-        {icons[type]}
-        <span className="font-bold text-gray-800 dark:text-gray-100">{message}</span>
+    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-10 duration-500">
+      <div className={`flex items-center gap-4 px-8 py-4 rounded-[2rem] shadow-2xl border backdrop-blur-md ${
+        type === 'success' ? 'bg-green-500/90 border-green-400 text-white' : 
+        type === 'error' ? 'bg-red-500/90 border-red-400 text-white' : 
+        'bg-blue-600/90 border-blue-400 text-white'
+      }`}>
+        {type === 'success' ? <CheckCircle2 size={24} strokeWidth={3}/> : <AlertCircle size={24} strokeWidth={3}/>}
+        <span className="font-black uppercase tracking-widest text-xs">{message}</span>
       </div>
     </div>
   );
@@ -205,7 +231,7 @@ function ConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500/20 relative">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-red-500/20 relative animate-in zoom-in-95 duration-200">
         <button 
           onClick={onCancel} 
           className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors active:scale-90"
@@ -227,35 +253,6 @@ function ConfirmDialog({
     </div>
   );
 }
-
-// --- Utilities ---
-
-const formatSize = (bytes: number) => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-const formatSpeed = (bps: number) => {
-  if (bps <= 0) return '';
-  return `${formatSize(bps)}/s`;
-};
-
-const formatETA = (seconds: number) => {
-  if (seconds <= 0 || !isFinite(seconds)) return '';
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m ${Math.round(seconds % 60)}s`;
-  const hours = Math.floor(mins / 60);
-  return `${hours}h ${mins % 60}m`;
-};
-
-const sanitiseFilename = (name: string): string => {
-  if (!name) return '';
-  return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim();
-};
 
 // --- Folder Selector Modal ---
 
@@ -507,8 +504,8 @@ function SettingsModal({
         <div className="w-full md:w-64 bg-gray-50 dark:bg-gray-950 border-r dark:border-gray-800 p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-3 mb-10 pl-2">
-              <div className="bg-blue-600 p-2 rounded-xl">
-                <Settings className="text-white" size={20} />
+              <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-500/30">
+                <Settings className="text-white" size={18} />
               </div>
               <h2 className="text-lg font-black dark:text-white uppercase tracking-tighter leading-none">Settings</h2>
             </div>
@@ -518,7 +515,7 @@ function SettingsModal({
                 <button
                   key={group.id}
                   onClick={() => setActiveGroup(group.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${activeGroup === group.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all text-xs uppercase tracking-widest ${activeGroup === group.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
                   {group.icon} {group.label}
                 </button>
@@ -526,9 +523,9 @@ function SettingsModal({
             </nav>
           </div>
 
-          <button 
-            onClick={onTest} 
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-gray-900 border dark:border-gray-800 text-blue-600 dark:text-blue-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all active:scale-95 shadow-sm"
+          <button
+            onClick={onTest}
+            className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-all border dark:border-gray-800 active:scale-95"
           >
             <ShieldCheck size={14}/> Test Connection
           </button>
@@ -543,27 +540,28 @@ function SettingsModal({
             <X size={24} />
           </button>
 
-          <div className="flex-1 p-10 overflow-y-auto space-y-8">
+          <div className="flex-1 p-10 overflow-y-auto space-y-8 text-sm">
             {activeGroup === 'server' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black dark:text-white">Server Credentials</h3>
-                  <p className="text-sm text-gray-500">Configure your Xtream Codes API connection.</p>
+                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Server Credentials</h3>
+                  <p className="text-sm text-gray-500">Update your Xtream API connection details.</p>
                 </div>
-                
-                <div className="grid gap-6">
+
+                <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Provider Endpoint</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Base URL</label>
                     <div className="relative">
                       <Globe className="absolute left-4 top-3.5 text-gray-400" size={18}/>
                       <input 
                         className="w-full border-none rounded-2xl px-12 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                        placeholder="http://example.com:8080"
+                        placeholder="http://provider.com:8080"
                         value={config.base_url} 
                         onChange={e => setConfig({...config, base_url: e.target.value})}
                       />
                     </div>
                   </div>
+
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Username</label>
@@ -623,7 +621,7 @@ function SettingsModal({
             {activeGroup === 'downloads' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black dark:text-white">Storage & Identity</h3>
+                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Storage & Identity</h3>
                   <p className="text-sm text-gray-500">How and where your files are saved.</p>
                 </div>
 
@@ -650,28 +648,28 @@ function SettingsModal({
 
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">VOD Auto-Refresh (H)</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Cache Expiry (Hours)</label>
                       <input 
                         type="number"
                         className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                         value={config.cache_expiry_hours} 
-                        onChange={e => setConfig({...config, cache_expiry_hours: parseInt(e.target.value) || 0})}
+                        onChange={e => setConfig({...config, cache_expiry_hours: parseInt(e.target.value) || 24})}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">User-Agent Profile</label>
-                      <select 
-                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium appearance-none"
-                        value={Object.values(uaPresets).includes(config.user_agent) ? config.user_agent : 'custom'}
-                        onChange={e => {
-                          if (e.target.value !== 'custom') setConfig({...config, user_agent: e.target.value});
-                        }}
-                      >
-                        {Object.entries(uaPresets).map(([label, val]) => (
-                          <option key={label} value={val}>{label}</option>
-                        ))}
-                        <option value="custom">Custom Identity...</option>
-                      </select>
+                    <div className="space-y-2 flex flex-col justify-end">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">User Agent</label>
+                      <div className="relative">
+                        <select
+                          className="w-full appearance-none border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold text-[10px] tracking-tight truncate pr-10"
+                          value={config.user_agent}
+                          onChange={e => setConfig({...config, user_agent: e.target.value})}
+                        >
+                          {Object.entries(uaPresets).map(([label, val]) => (
+                            <option key={label} value={val as string}>{label}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-4 top-3.5 text-gray-400 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -681,49 +679,46 @@ function SettingsModal({
             {activeGroup === 'automation' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black dark:text-white">Retry Logic</h3>
-                  <p className="text-sm text-gray-500">Automate recovery from connection failures.</p>
+                  <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Recovery & Scheduling</h3>
+                  <p className="text-sm text-gray-500">Control how the app behaves when connections drop.</p>
                 </div>
 
                 <div className="space-y-6">
-                  <div 
-                    onClick={() => setConfig({...config, auto_retry_failed: !config.auto_retry_failed})}
-                    className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer ${config.auto_retry_failed ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-100 dark:border-gray-800'}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${config.auto_retry_failed ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                        <Zap size={24}/>
-                      </div>
-                      <div>
-                        <p className="font-black dark:text-white uppercase tracking-tight">Auto-Retry Failed Items</p>
-                        <p className="text-xs text-gray-500">Automatically re-queues failed downloads.</p>
-                      </div>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border dark:border-gray-800">
+                    <div className="space-y-0.5">
+                      <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Auto-Retry Failed</h4>
+                      <p className="text-xs text-gray-500">Automatically re-queue failed downloads.</p>
                     </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${config.auto_retry_failed ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {config.auto_retry_failed && <Check size={14} className="text-white" strokeWidth={4}/>}
-                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={config.auto_retry_failed}
+                        onChange={e => setConfig({...config, auto_retry_failed: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
+                    </label>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6 pl-2">
-                    <div 
-                      onClick={() => config.auto_retry_failed && setConfig({...config, retry_forever: !config.retry_forever})}
-                      className={`flex items-center gap-3 cursor-pointer ${!config.auto_retry_failed && 'opacity-30'}`}
-                    >
-                      <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${config.retry_forever ? 'bg-blue-600 border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
-                        {config.retry_forever && <Check size={12} className="text-white" strokeWidth={4}/>}
-                      </div>
-                      <span className="text-sm font-bold dark:text-gray-200">Retry Forever (No Limit)</span>
-                    </div>
-                    
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Manual Retry Limit</label>
+                  <div className={`grid grid-cols-2 gap-6 transition-all ${!config.auto_retry_failed ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Max Retries</label>
                       <input 
                         type="number"
-                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium disabled:opacity-30"
-                        disabled={!config.auto_retry_failed || config.retry_forever}
+                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                         value={config.max_retries} 
-                        onChange={e => setConfig({...config, max_retries: parseInt(e.target.value) || 0})}
+                        onChange={e => setConfig({...config, max_retries: parseInt(e.target.value) || 3})}
                       />
+                    </div>
+                    <div className="flex items-center gap-3 pt-6">
+                      <input 
+                        type="checkbox" 
+                        id="retry_forever"
+                        className="w-5 h-5 rounded-lg border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500"
+                        checked={config.retry_forever}
+                        onChange={e => setConfig({...config, retry_forever: e.target.checked})}
+                      />
+                      <label htmlFor="retry_forever" className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Retry Forever</label>
                     </div>
                   </div>
 
@@ -840,7 +835,7 @@ function SettingsModal({
               Dismiss
             </button>
             <button 
-              onClick={onSave} 
+              onClick={onSave}
               className="px-12 py-3.5 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 active:scale-95 flex items-center gap-3"
             >
               <Save size={18}/> Save Configuration
@@ -922,7 +917,7 @@ function ItemDetailsModal({
             <X size={24} />
           </button>
 
-          <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-8">
+          <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-8 text-sm">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">
@@ -959,7 +954,7 @@ function ItemDetailsModal({
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 text-sm">
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Storyline</h3>
               <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
                 {loading ? 'Fetching content details...' : (info.plot || 'No description available for this title.')}
@@ -1003,64 +998,35 @@ function ItemDetailsModal({
 
 // --- Episode Selector Modal Component ---
 
-function EpisodeSelectorModal({
-  series,
-  config,
-  onClose,
-  onQueue
-}: {
-  series: Item,
-  config: Config | null,
-  onClose: () => void,
-  onQueue: (items: any[]) => void
+function EpisodeSelectorModal({ 
+  series, 
+  config, 
+  onClose, 
+  onQueue 
+}: { 
+  series: Item, 
+  config: Config | null, 
+  onClose: () => void, 
+  onQueue: (items: any[]) => void 
 }) {
+  const [seasons, setSeasons] = useState<Record<string, Episode[]>>({});
   const [loading, setLoading] = useState(true);
-  const [seriesInfo, setSeriesInfo] = useState<any>(null);
   const [selectedEpisodes, setSelectedEpisodes] = useState<Set<string>>(new Set());
-  const [expandedSeasons, setExpandedSeasons] = useState<Set<string>>(new Set());
-  const [epSearch, setEpSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const loadInfo = async () => {
+    const fetchInfo = async () => {
       try {
         const data = await api.getSeriesInfo(series.series_id?.toString() || '');
-        setSeriesInfo(data);
-        const firstSeason = data.seasons?.[0]?.season_number?.toString();
-        if (firstSeason) {
-          setExpandedSeasons(new Set([firstSeason]));
-        }
+        setSeasons(data.episodes || {});
       } catch (err) {
         console.error('Failed to load series info', err);
       } finally {
         setLoading(false);
       }
     };
-    loadInfo();
-  }, [series.series_id]);
-
-  const episodesBySeason = useMemo(() => {
-    if (!seriesInfo?.episodes) return {};
-    const result: Record<string, Episode[]> = {};
-    
-    Object.keys(seriesInfo.episodes).forEach(seasonKey => {
-      const episodes = seriesInfo.episodes[seasonKey] || [];
-      if (!epSearch) {
-        result[seasonKey] = episodes;
-      } else {
-        const term = epSearch.toLowerCase();
-        const filtered = episodes.filter((e: any) => 
-          (e.title || e.name || '').toLowerCase().includes(term) || 
-          `e${e.episode_num}`.toLowerCase().includes(term)
-        );
-        if (filtered.length > 0) result[seasonKey] = filtered;
-      }
-    });
-    return result;
-  }, [seriesInfo, epSearch]);
-
-  const sortedSeasonKeys = useMemo(() => {
-    return Object.keys(episodesBySeason).sort((a, b) => parseInt(a) - parseInt(b));
-  }, [episodesBySeason]);
+    fetchInfo();
+  }, [series]);
 
   const toggleEpisode = (id: string) => {
     const next = new Set(selectedEpisodes);
@@ -1069,7 +1035,7 @@ function EpisodeSelectorModal({
     setSelectedEpisodes(next);
   };
 
-  const toggleSeason = (episodes: Episode[]) => {
+  const toggleSeason = (seasonKey: string, episodes: Episode[]) => {
     const next = new Set(selectedEpisodes);
     const seasonEpIds = episodes.map(e => e.id);
     const allSelected = seasonEpIds.every(id => next.has(id));
@@ -1082,40 +1048,27 @@ function EpisodeSelectorModal({
     setSelectedEpisodes(next);
   };
 
-  const toggleExpand = (key: string) => {
-    const next = new Set(expandedSeasons);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    setExpandedSeasons(next);
-  };
-
   const handleQueueSelected = () => {
-    if (!seriesInfo || !config) return;
     const toQueue: any[] = [];
-    
-    const rawSeriesName = seriesInfo.info?.name || series.name;
-    const safeSeriesName = sanitiseFilename(rawSeriesName);
-    const seriesYear = seriesInfo.info?.year || series.year;
-    const yearPart = seriesYear ? ` (${seriesYear})` : '';
-    const seriesFolderName = `${safeSeriesName}${yearPart}`;
+    const baseUrl = config?.base_url;
+    const user = config?.username;
+    const pass = config?.password;
 
-    Object.keys(seriesInfo.episodes).forEach(seasonKey => {
-      const episodes = seriesInfo.episodes[seasonKey] || [];
-      episodes.forEach((ep: any) => {
-        if (selectedEpisodes.has(ep.id)) {
+    Object.values(seasons).forEach(eps => {
+      eps.forEach(ep => {
+        if (selectedEpisodes.has(ep.id.toString())) {
           const streamId = ep.id;
-          const ext = ep.container_extension || 'mkv';
-          const sNum = parseInt(seasonKey).toString().padStart(2, '0');
-          const eNum = parseInt(ep.episode_num).toString().padStart(2, '0');
+          const ext = ep.container_extension || 'mp4';
           
-          const rawEpTitle = ep.title || ep.name || `Episode ${eNum}`;
-          const safeEpTitle = sanitiseFilename(rawEpTitle);
+          // FILENAME: Show Name - S01E01 - Episode Title.ext
+          const safeSeriesName = sanitiseFilename(series.name);
+          const safeEpTitle = ep.title ? ` - ${sanitiseFilename(ep.title)}` : '';
+          const sNum = ep.season.toString().padStart(2, '0');
+          const eNum = ep.episode_num.toString().padStart(2, '0');
           
-          // FILENAME ON DISK: Series (Year) - SXXEYY - Title.ext
-          const filename = `${seriesFolderName} - S${sNum}E${eNum} - ${safeEpTitle}.${ext}`;
-          
-          const streamUrl = `${config.base_url}/series/${config.username}/${config.password}/${streamId}.${ext}`;
-          const targetPath = `${config.download_dir}/${seriesFolderName}/Season ${sNum}/${filename}`;
+          const filename = `${safeSeriesName} - S${sNum}E${eNum}${safeEpTitle}.${ext}`;
+          const streamUrl = `${baseUrl}/series/${user}/${pass}/${streamId}.${ext}`;
+          const targetPath = `${config?.download_dir}/TV/${safeSeriesName}/Season ${sNum}/${filename}`;
 
           toQueue.push({
             item_id: streamId,
@@ -1133,10 +1086,34 @@ function EpisodeSelectorModal({
     onClose();
   };
 
+  const filteredSeasons = useMemo(() => {
+    if (!searchTerm) return seasons;
+    const term = searchTerm.toLowerCase();
+    const result: Record<string, Episode[]> = {};
+    
+    Object.entries(seasons).forEach(([seasonKey, episodes]) => {
+      const filtered = episodes.filter(e => 
+        (e.title || e.name || '').toLowerCase().includes(term) ||
+        `e${e.episode_num}`.toLowerCase().includes(term)
+      );
+      if (filtered.length > 0) result[seasonKey] = filtered;
+    });
+    return result;
+  }, [seasons, searchTerm]);
+
+  const sortedSeasonKeys = Object.keys(filteredSeasons).sort((a, b) => parseInt(a) - parseInt(b));
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden border dark:border-gray-800 flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-8 border-b dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[250] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl w-full max-w-6xl overflow-hidden border dark:border-gray-800 flex flex-col max-h-[90vh] relative animate-in zoom-in-95 duration-300">
+        <button 
+          onClick={onClose}
+          className="absolute top-8 right-8 p-3 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-red-500 rounded-2xl transition-all hidden md:flex active:scale-90 z-10"
+        >
+          <X size={24} />
+        </button>
+
+        <div className="p-8 md:p-12 border-b dark:border-gray-800 flex flex-col md:flex-row gap-8 bg-gray-50/50 dark:bg-gray-800/30">
           <div className="flex items-center gap-6">
             <div className="w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded-2xl overflow-hidden shadow-xl border-2 border-white dark:border-gray-700 flex-shrink-0">
               <SafeImage 
@@ -1148,104 +1125,104 @@ function EpisodeSelectorModal({
               />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none">{series.name}</h2>
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none">{series.name}</h2>
               <p className="text-[10px] text-gray-500 uppercase font-black tracking-[0.2em] mt-2">Episode Selection</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-2xl transition-all active:scale-90">
-            <X size={24} />
-          </button>
-        </div>
-
-        <div className="p-6 bg-gray-100 dark:bg-gray-950 border-b dark:border-gray-800 flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search size={18} className="absolute left-5 top-3.5 text-gray-400" />
-            <input 
-              placeholder="Search episodes by name or E01..."
-              className="w-full pl-14 pr-6 py-3.5 rounded-2xl border-none bg-white dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-              value={epSearch}
-              onChange={e => setEpSearch(e.target.value)}
-            />
+          
+          <div className="flex-1 flex flex-col sm:flex-row items-center gap-4">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
+              <input 
+                placeholder="Search episodes..."
+                className="w-full pl-12 pr-6 py-3.5 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-4">
+              <button onClick={onClose} className="px-8 py-4 text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest text-[10px] hover:text-gray-700 dark:hover:text-gray-200 transition-all">Dismiss</button>
+              <button 
+                onClick={handleQueueSelected}
+                disabled={selectedEpisodes.size === 0}
+                className="px-14 py-4 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/40 active:scale-95 flex items-center gap-3 disabled:opacity-50 disabled:shadow-none disabled:grayscale"
+              >
+                <Zap size={18}/> Send to Queue
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto p-8 md:p-12">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-6">
-              <RefreshCw size={64} className="animate-spin text-blue-600" strokeWidth={3} />
-              <p className="text-gray-500 font-black uppercase tracking-[0.2em] text-[10px]">Parsing Season Tree...</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-gray-400">
+              <RefreshCw className="animate-spin" size={48} strokeWidth={1} />
+              <p className="font-black uppercase tracking-[0.3em] text-[10px]">Loading Seasons</p>
             </div>
           ) : (
-            <>
+            <div className="space-y-12">
               {sortedSeasonKeys.map(seasonKey => {
-                const episodes = episodesBySeason[seasonKey];
-                const isExpanded = expandedSeasons.has(seasonKey);
+                const episodes = filteredSeasons[seasonKey];
+                const seasonEpIds = episodes.map(e => e.id.toString());
+                const allSelected = seasonEpIds.every(id => selectedEpisodes.has(id));
+
                 return (
-                  <div key={seasonKey} className="border dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm bg-white dark:bg-gray-900">
-                    <div 
-                      className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
-                      onClick={() => toggleExpand(seasonKey)}
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-colors ${isExpanded ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}`}>
-                          {seasonKey}
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-black dark:text-white uppercase tracking-tight">Season {seasonKey}</h3>
-                          <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{episodes.length} Episodes available</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); toggleSeason(episodes); }}
-                          className="px-4 py-2 rounded-xl bg-white dark:bg-gray-700 border dark:border-gray-600 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all shadow-sm"
-                        >
-                          {episodes.every(ep => selectedEpisodes.has(ep.id)) ? 'Deselect All' : 'Select Season'}
-                        </button>
-                        <ChevronDown size={24} className={`text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
+                  <div key={seasonKey} className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center justify-between border-b dark:border-gray-800 pb-4">
+                      <h3 className="text-xl font-black dark:text-white uppercase tracking-tighter italic flex items-center gap-3">
+                        Season {seasonKey.padStart(2, '0')}
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest not-italic opacity-60">({episodes.length} episodes)</span>
+                      </h3>
+                      <button 
+                        onClick={() => toggleSeason(seasonKey, episodes)}
+                        className={`px-6 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${allSelected ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'}`}
+                      >
+                        {allSelected ? 'Deselect All' : 'Select Season'}
+                      </button>
                     </div>
                     
-                    {isExpanded && (
-                      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-gray-900 border-t dark:border-gray-800 animate-in fade-in slide-in-from-top-4 duration-300">
-                        {episodes.map(ep => (
-                          <div 
-                            key={ep.id} 
-                            onClick={() => toggleEpisode(ep.id)}
-                            className={`flex items-center gap-4 p-4 rounded-[1.5rem] border-2 transition-all cursor-pointer group ${selectedEpisodes.has(ep.id) ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg shadow-blue-500/5' : 'border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800'}`}
-                          >
-                            <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${selectedEpisodes.has(ep.id) ? 'bg-blue-600 border-blue-600 scale-110' : 'border-gray-300 dark:border-gray-600 group-hover:border-blue-400'}`}>
-                              {selectedEpisodes.has(ep.id) && <Check size={16} className="text-white" strokeWidth={4} />}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-black dark:text-gray-200 truncate leading-tight uppercase tracking-tight">E{ep.episode_num.toString().padStart(2, '0')} • {ep.title || ep.name}</p>
-                              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">{ep.container_extension || 'mkv'}</p>
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                      {episodes.map(ep => (
+                        <div 
+                          key={ep.id}
+                          onClick={() => toggleEpisode(ep.id.toString())}
+                          className={`group flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer ${selectedEpisodes.has(ep.id.toString()) ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-lg' : 'border-transparent bg-gray-50 dark:bg-gray-800/40 hover:border-gray-200 dark:hover:border-gray-700'}`}
+                        >
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all ${selectedEpisodes.has(ep.id.toString()) ? 'bg-blue-600 text-white shadow-lg' : 'bg-white dark:bg-gray-700 text-gray-400'}`}>
+                            {ep.episode_num}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`font-bold truncate ${selectedEpisodes.has(ep.id.toString()) ? 'text-blue-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                              {ep.title || ep.name || `Episode ${ep.episode_num}`}
+                            </h4>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Ready to queue</p>
+                          </div>
+                          {selectedEpisodes.has(ep.id.toString()) && (
+                            <div className="bg-blue-600 text-white p-1 rounded-full shadow-lg animate-in zoom-in duration-200">
+                              <CheckCircle2 size={16} strokeWidth={3}/>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })}
               {sortedSeasonKeys.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                  <Search size={48} className="mb-4 opacity-20" />
-                  <p className="font-bold text-lg uppercase tracking-widest">No matching episodes</p>
-                </div>
+                <div className="text-center py-20 text-gray-400 italic">No episodes found matching your search.</div>
               )}
-            </>
+            </div>
           )}
         </div>
 
-        <div className="p-8 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
-          <div className="flex items-center gap-4 pl-4">
-            <div className="bg-blue-600 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Download size={24} className="text-white"/>
+        <div className="p-8 md:p-12 bg-gray-50 dark:bg-gray-950/50 border-t dark:border-gray-800 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${selectedEpisodes.size > 0 ? 'bg-blue-600 text-white shadow-2xl shadow-blue-500/40' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+              <Zap size={24} strokeWidth={2.5}/>
             </div>
             <div>
               <span className="block text-2xl font-black text-gray-900 dark:text-white leading-none">{selectedEpisodes.size}</span>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-black tracking-widest mt-1">Episodes Selected</span>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Episodes Selected</span>
             </div>
           </div>
           <div className="flex gap-4">
@@ -1263,8 +1240,6 @@ function EpisodeSelectorModal({
     </div>
   );
 }
-
-// --- Main App Component ---
 
 export default function App() {
   // Application State
@@ -1294,28 +1269,28 @@ export default function App() {
   });
   
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem('view-mode') as ViewMode) || 'compact');
-
-  // Custom Alert/Confirm State
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [confirm, setConfirm] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
 
   const LIMIT = 50;
-
-  // Persist view mode
-  useEffect(() => {
-    localStorage.setItem('view-mode', viewMode);
-  }, [viewMode]);
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(itemSearch), 300);
-    return () => clearTimeout(timer);
-  }, [itemSearch]);
-  
-  // Polling reference for the download queue
   const queuePollRef = useRef<any>(null);
 
-  // Sync dark mode class with state
+  // Initialize: Fetch settings and UA presets
+  const fetchConfig = useCallback(async () => {
+    try {
+      const data = await api.getConfig();
+      setConfig(data);
+    } catch (err) {
+      console.error('Failed to fetch config', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConfig();
+    api.getUAPresets().then(setUAPresets).catch(console.error);
+  }, [fetchConfig]);
+
+  // Dark mode side effect
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -1325,18 +1300,6 @@ export default function App() {
       localStorage.setItem('color-theme', 'light');
     }
   }, [isDarkMode]);
-
-  // Initialize: Fetch settings and UA presets
-  const fetchConfig = useCallback(async () => {
-    try {
-      const data = await api.getConfig();
-      setConfig(data);
-      const presets = await api.getUAPresets();
-      setUAPresets(presets);
-    } catch (err) {
-      console.error('Failed to fetch config', err);
-    }
-  }, []);
 
   // Fetch categories for the current tab (Movies or Series)
   const fetchCategories = useCallback(async (kind: 'movies' | 'series', refresh: boolean = false) => {
@@ -1351,10 +1314,11 @@ export default function App() {
 
   // Fetch items for the selected category
   const fetchItems = useCallback(async (kind: 'movies' | 'series', catId: string, search: string, newOffset: number, append: boolean = false, refresh: boolean = false) => {
-    if (append) setLoadingMore(true);
-    else {
+    if (!append) {
       setLoading(true);
       setError(null);
+    } else {
+      setLoadingMore(true);
     }
 
     try {
@@ -1369,36 +1333,25 @@ export default function App() {
         setTotalItems(data.total || 0);
         setOffset(data.offset || 0);
       } else {
-        console.error('Invalid response format received from server:', data);
-        throw new Error(data?.detail || 'Invalid response format from server');
+        setItems([]);
+        setTotalItems(0);
       }
-    } catch (err: any) {
-      console.error('Failed to fetch items:', err);
-      setError(err.message || 'An unexpected error occurred');
-      if (!append) setItems([]);
+    } catch (err) {
+      console.error('Failed to fetch items', err);
+      if (!append) setError('Failed to communicate with the server. Please check your provider settings.');
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
   }, []);
 
-  // Fetch current queue status (polled every 2s)
-  const fetchQueue = useCallback(async () => {
-    try {
-      const data = await api.getQueue();
-      setQueue(data);
-    } catch (err) {
-      console.error('Failed to fetch queue', err);
-    }
-  }, []);
-
-  // Set up initial data loading and polling
+  // Search debouncing
   useEffect(() => {
-    fetchConfig();
-    fetchQueue();
-    queuePollRef.current = setInterval(fetchQueue, 2000);
-    return () => clearInterval(queuePollRef.current);
-  }, [fetchConfig, fetchQueue]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(itemSearch);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [itemSearch]);
 
   // Tab switching logic: refresh categories
   useEffect(() => {
@@ -1508,6 +1461,22 @@ export default function App() {
   }, 0);
   const globalETA = totalSpeed > 0 ? totalRemainingBytes / totalSpeed : 0;
 
+  // Polling for queue status
+  const fetchQueue = useCallback(async () => {
+    try {
+      const data = await api.getQueue();
+      setQueue(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch queue', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQueue();
+    queuePollRef.current = setInterval(fetchQueue, 2000);
+    return () => clearInterval(queuePollRef.current);
+  }, [fetchQueue]);
+
   if (config && !config.is_complete) {
     return (
       <SetupWizard 
@@ -1519,7 +1488,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden text-sm transition-colors duration-200 font-sans tracking-tight">
+    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden text-sm transition-colors duration-200 font-sans tracking-tight text-gray-900 dark:text-gray-100">
       {/* HEADER */}
       <header className="bg-white dark:bg-gray-900 border-b dark:border-gray-800 px-4 md:px-8 py-3 md:py-5 shadow-sm flex items-center justify-between z-30">
         <div className="flex items-center gap-3 md:gap-4">
@@ -1616,7 +1585,7 @@ export default function App() {
               <button onClick={() => setShowSidebar(false)} className="p-2 text-gray-400"><X size={20}/></button>
             </div>
             {/* Tab Switcher */}
-            <div className="flex bg-gray-200/50 dark:bg-gray-800/50 rounded-2xl p-1.5 border dark:border-gray-700 shadow-inner">
+            <div className="flex bg-gray-200/50 dark:bg-gray-800/50 rounded-2xl p-1.5 border dark:border-gray-700 shadow-inner flex-shrink-0">
               <button 
                 onClick={() => { setActiveTab('movies'); setShowSidebar(false); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[1.25rem] transition-all ${activeTab === 'movies' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] tracking-widest' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-black uppercase text-[10px] tracking-widest'}`}
@@ -1646,10 +1615,10 @@ export default function App() {
               )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
+          <div className="flex-1 overflow-y-auto px-2 py-4 space-y-1 font-bold">
             <button 
               onClick={() => { setSelectedCat('0'); setShowSidebar(false); }}
-              className={`w-full text-left px-6 py-3 rounded-2xl font-bold transition-all ${selectedCat === '0' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+              className={`w-full text-left px-6 py-3 rounded-2xl transition-all ${selectedCat === '0' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               All Categories
             </button>
@@ -1657,7 +1626,7 @@ export default function App() {
               <button 
                 key={cat.category_id}
                 onClick={() => { setSelectedCat(cat.category_id); setShowSidebar(false); }}
-                className={`w-full text-left px-6 py-3 rounded-2xl font-bold transition-all flex items-center justify-between group ${selectedCat === cat.category_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                className={`w-full text-left px-6 py-3 rounded-2xl transition-all flex items-center justify-between group ${selectedCat === cat.category_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
               >
                 <span className="truncate">{cat.category_name}</span>
                 <ChevronRight size={14} className={`opacity-0 group-hover:opacity-100 transition-opacity ${selectedCat === cat.category_id ? 'opacity-100' : ''}`} />
@@ -1851,10 +1820,10 @@ export default function App() {
       </main>
 
       {/* FOOTER - Responsive Queue */}
-      <footer className={`${showQueue ? 'h-[80vh]' : 'h-16'} md:h-80 bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl z-50 transition-all duration-500 ease-in-out`}>
+      <footer className={`${showQueue ? 'h-[80vh]' : 'h-16'} md:h-80 bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl z-50 transition-all duration-500 ease-in-out overflow-hidden`}>
         <div 
           onClick={() => window.innerWidth < 768 && setShowQueue(!showQueue)}
-          className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-pointer md:cursor-default"
+          className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-pointer md:cursor-default flex-shrink-0"
         >
           <div className="flex items-center gap-3 md:gap-8 min-w-0">
             <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2 md:gap-3">
@@ -1864,7 +1833,7 @@ export default function App() {
             
             <div className="flex items-center gap-2 md:gap-4 overflow-x-auto no-scrollbar">
               <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-full shadow-inner flex-shrink-0">
-                <span className="text-[8px] md:text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">{queue.length}</span>
+                <span className="text-[8px] md:text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Total: {queue.length}</span>
               </div>
               <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded-full shadow-inner flex-shrink-0">
                 <span className="text-[8px] md:text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">{queue.filter(i => i.status !== 'completed').length} Left</span>
@@ -1893,7 +1862,7 @@ export default function App() {
               onClick={(e) => { 
                 e.stopPropagation(); 
                 if (config?.enable_download_window && !config.is_in_window) {
-                  setToast({ message: `Queue started, but waiting for window (${config.retry_start_hour:02d}:00 - ${config.retry_end_hour:02d}:00)`, type: 'info' });
+                  setToast({ message: `Queue started, but waiting for window (${config.retry_start_hour}:00 - ${config.retry_end_hour}:00)`, type: 'info' });
                 }
                 api.controlQueue('start'); 
               }} 
