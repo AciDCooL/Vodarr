@@ -842,12 +842,14 @@ function ItemDetailsModal({
   item, 
   kind, 
   onClose, 
-  onQueue 
+  onQueue,
+  setToast
 }: { 
   item: Item, 
   kind: 'movies' | 'series', 
   onClose: () => void,
-  onQueue: (item: Item) => void
+  onQueue: (item: Item) => void,
+  setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void
 }) {
   const [details, setDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -1614,6 +1616,7 @@ export default function App() {
           kind={activeTab}
           onClose={() => setSelectedItem(null)}
           onQueue={handleAddToQueue}
+          setToast={setToast}
         />
       )}
 
