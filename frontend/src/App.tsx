@@ -5,7 +5,7 @@ import {
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, Info,
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
-  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp
+  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp, PlayCircle
 } from 'lucide-react';
 
 /**
@@ -851,6 +851,7 @@ function ItemDetailsModal({
 }) {
   const [details, setDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showPlayer, setShowPlayer] = useState(false);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -879,14 +880,41 @@ function ItemDetailsModal({
         
         {/* Backdrop / Poster Area */}
         <div className="relative w-full md:w-[400px] h-64 md:h-auto bg-gray-200 dark:bg-gray-800 flex-shrink-0">
-          <SafeImage 
-            src={item.cover} 
-            className="w-full h-full object-cover" 
-            alt={item.name}
-            fallbackIcon={kind === 'movies' ? Film : Tv}
-            iconSize={48}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden" />
+          {showPlayer ? (
+            <div className="w-full h-full bg-black flex items-center justify-center relative">
+              <video 
+                src={item.stream_id ? `/api/movie/${item.stream_id}` : ''} 
+                controls 
+                autoPlay 
+                className="w-full h-full object-contain"
+              />
+              <button 
+                onClick={() => setShowPlayer(false)}
+                className="absolute top-4 left-4 p-2 bg-black/40 text-white rounded-lg hover:bg-black/60 transition-all"
+              >
+                <X size={16}/>
+              </button>
+            </div>
+          ) : (
+            <>
+              <SafeImage 
+                src={item.cover} 
+                className="w-full h-full object-cover" 
+                alt={item.name}
+                fallbackIcon={kind === 'movies' ? Film : Tv}
+                iconSize={48}
+              />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <button 
+                  onClick={() => setShowPlayer(true)}
+                  className="bg-white/20 backdrop-blur-md p-6 rounded-full text-white hover:scale-110 transition-all shadow-2xl"
+                >
+                  <PlayCircle size={64} fill="currentColor" className="text-white" />
+                </button>
+              </div>
+            </>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden pointer-events-none" />
           <button 
             onClick={onClose}
             className="absolute top-6 left-6 p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-2xl transition-all md:hidden"
@@ -1818,7 +1846,7 @@ export default function App() {
       </main>
 
       {/* FOOTER - Responsive Queue */}
-      <footer className={`${showQueue ? 'h-[80vh]' : 'h-16'} bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl z-50 transition-all duration-500 ease-in-out`}>
+      <footer className={`${showQueue ? 'h-[80vh]' : 'h-16'} md:h-80 bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl z-50 transition-all duration-500 ease-in-out`}>
         <div 
           onClick={() => window.innerWidth < 768 && setShowQueue(!showQueue)}
           className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-pointer md:cursor-default"
