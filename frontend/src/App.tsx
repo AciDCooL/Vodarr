@@ -34,6 +34,7 @@ interface Config {
   media_management: boolean;
   admin_username: string;
   admin_password?: string;
+  api_key: string;
   auth_bypass_local: boolean;
   is_complete: boolean;
   is_in_window: boolean;
@@ -594,18 +595,19 @@ function SettingsModal({
   config, 
   setConfig, 
   onSave, 
-  onClose, 
-  uaPresets, 
-  onTest 
+  onClose,
+  uaPresets,
+  onTest,
+  setToast
 }: { 
   config: Config | null, 
   setConfig: (c: Config) => void, 
   onSave: () => void, 
   onClose: () => void,
   uaPresets: Record<string, string>,
-  onTest: () => void
-}) {
-  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'automation' | 'system'>('server');
+  onTest: () => void,
+  setToast: (t: { message: string, type: 'success' | 'error' | 'info' }) => void
+}) {  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'automation' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [accountInfo, setAccountInfo] = useState<any>(null);
 
@@ -1943,6 +1945,7 @@ export default function App() {
           onClose={() => setShowSettings(false)}
           uaPresets={uaPresets}
           onTest={() => api.testConnection().then(r => setToast({ message: r.message, type: r.status === 'success' ? 'success' : 'error' }))}
+          setToast={setToast}
         />
       )}
 
