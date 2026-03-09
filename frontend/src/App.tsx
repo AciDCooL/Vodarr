@@ -5,7 +5,7 @@ import {
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, Info,
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
-  LayoutGrid, List, AlignJustify, Power, Star, Calendar
+  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp
 } from 'lucide-react';
 
 /**
@@ -466,6 +466,20 @@ function SettingsModal({
 }) {
   const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'automation' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [accountInfo, setAccountInfo] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchAccount = async () => {
+      try {
+        const data = await api.getAccountInfo();
+        setAccountInfo(data);
+      } catch (err) {
+        console.error('Failed to fetch account info', err);
+      }
+    };
+    fetchAccount();
+  }, []);
+
   if (!config) return null;
 
   const groups = [
@@ -566,6 +580,39 @@ function SettingsModal({
                     </div>
                   </div>
                 </div>
+
+                {accountInfo?.user_info && (
+                  <div className="pt-6 border-t dark:border-gray-800 space-y-4">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Account Vital Stats</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border dark:border-gray-800">
+                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Expiration</p>
+                        <p className="text-sm font-bold dark:text-gray-200 mt-1">
+                          {accountInfo.user_info.exp_date ? new Date(parseInt(accountInfo.user_info.exp_date) * 1000).toLocaleDateString() : 'Unlimited'}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border dark:border-gray-800">
+                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Active Streams</p>
+                        <p className="text-sm font-bold mt-1 flex items-center gap-2">
+                          <span className={parseInt(accountInfo.user_info.active_cons) >= parseInt(accountInfo.user_info.max_connections) ? 'text-red-500' : 'text-green-500'}>
+                            {accountInfo.user_info.active_cons}
+                          </span>
+                          <span className="text-gray-400">/ {accountInfo.user_info.max_connections}</span>
+                        </p>
+                      </div>
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border dark:border-gray-800 col-span-2">
+                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Allowed Formats</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {(accountInfo.user_info.allowed_output_formats || ['mkv', 'mp4', 'ts']).map((fmt: string) => (
+                            <span key={fmt} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-tighter">
+                              {fmt}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1218,6 +1265,8 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [selectedSeries, setSelectedSeries] = useState<Item | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
@@ -1450,43 +1499,49 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden text-sm transition-colors duration-200 font-sans tracking-tight">
       {/* HEADER */}
-      <header className="bg-white dark:bg-gray-900 border-b dark:border-gray-800 px-8 py-5 shadow-sm flex items-center justify-between z-30">
-        <div className="flex items-center gap-4">
-          <div className="bg-blue-600 p-3 rounded-[1.25rem] shadow-xl shadow-blue-500/30">
-            <Download className="text-white" size={24} strokeWidth={3} />
+      <header className="bg-white dark:bg-gray-900 border-b dark:border-gray-800 px-4 md:px-8 py-3 md:py-5 shadow-sm flex items-center justify-between z-30">
+        <div className="flex items-center gap-3 md:gap-4">
+          <button 
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="p-2 md:hidden text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="bg-blue-600 p-2 md:p-3 rounded-xl md:rounded-[1.25rem] shadow-xl shadow-blue-500/30">
+            <Download className="text-white" size={20} md:size={24} strokeWidth={3} />
           </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tighter text-gray-900 dark:text-white uppercase leading-none">Vodarr</h1>
-            <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] leading-none mt-1 pl-0.5">VOD Downloader</p>
+          <div className="hidden sm:block">
+            <h1 className="text-lg md:text-xl font-black tracking-tighter text-gray-900 dark:text-white uppercase leading-none">Vodarr</h1>
+            <p className="text-[8px] md:text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] leading-none mt-1 pl-0.5">VOD Downloader</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 pl-2">
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1 md:gap-2">
             <button 
               onClick={handleManualRefresh} 
               title="Refresh Catalog" 
-              className="p-3 bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 rounded-2xl hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-90 border dark:border-gray-800"
+              className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 rounded-xl md:rounded-2xl hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-90 border dark:border-gray-800"
             >
-              <RefreshCw size={20}/>
+              <RefreshCw size={18} md:size={20}/>
             </button>
 
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)} 
               title="Toggle Theme" 
-              className="p-3 bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-90 border dark:border-gray-800"
+              className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 rounded-xl md:rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-90 border dark:border-gray-800"
             >
-              {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
+              {isDarkMode ? <Sun size={18} md:size={20}/> : <Moon size={18} md:size={20}/>}
             </button>
 
-            <div className="w-px h-10 bg-gray-200 dark:bg-gray-800 mx-2"></div>
+            <div className="w-px h-8 md:h-10 bg-gray-200 dark:bg-gray-800 mx-1 md:mx-2"></div>
 
             <button 
               onClick={() => setShowSettings(true)} 
               title="Settings" 
-              className="p-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 active:scale-95 border-2 border-transparent hover:border-white/20"
+              className="p-2 md:p-3 bg-blue-600 text-white rounded-xl md:rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 active:scale-95 border-2 border-transparent hover:border-white/20"
             >
-              <Settings size={20}/>
+              <Settings size={18} md:size={20}/>
             </button>
           </div>
         </div>
@@ -1529,20 +1584,24 @@ export default function App() {
       )}
 
       {/* MAIN LAYOUT */}
-      <main className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR */}
-        <aside className="w-72 bg-white dark:bg-gray-900 border-r dark:border-gray-800 flex flex-col shadow-sm z-10">
+      <main className="flex flex-1 overflow-hidden relative">
+        {/* SIDEBAR - Responsive Drawer */}
+        <aside className={`${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} absolute md:relative w-72 h-full bg-white dark:bg-gray-900 border-r dark:border-gray-800 flex flex-col shadow-xl md:shadow-sm z-40 transition-transform duration-300 ease-in-out`}>
           <div className="p-6 border-b dark:border-gray-800 flex flex-col gap-6 bg-gray-50/50 dark:bg-gray-900/50">
-            {/* Tab Switcher (Moved here) */}
+            <div className="flex items-center justify-between md:hidden">
+              <h2 className="font-black uppercase tracking-widest text-xs dark:text-white">Categories</h2>
+              <button onClick={() => setShowSidebar(false)} className="p-2 text-gray-400"><X size={20}/></button>
+            </div>
+            {/* Tab Switcher */}
             <div className="flex bg-gray-200/50 dark:bg-gray-800/50 rounded-2xl p-1.5 border dark:border-gray-700 shadow-inner">
               <button 
-                onClick={() => setActiveTab('movies')}
+                onClick={() => { setActiveTab('movies'); setShowSidebar(false); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[1.25rem] transition-all ${activeTab === 'movies' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] tracking-widest' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-black uppercase text-[10px] tracking-widest'}`}
               >
                 <Film size={14}/> Movies
               </button>
               <button 
-                onClick={() => setActiveTab('series')}
+                onClick={() => { setActiveTab('series'); setShowSidebar(false); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[1.25rem] transition-all ${activeTab === 'series' ? 'bg-white dark:bg-gray-700 shadow-md text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] tracking-widest' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-black uppercase text-[10px] tracking-widest'}`}
               >
                 <Tv size={14}/> Series
@@ -1566,7 +1625,7 @@ export default function App() {
           </div>
           <div className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
             <button 
-              onClick={() => setSelectedCat('0')}
+              onClick={() => { setSelectedCat('0'); setShowSidebar(false); }}
               className={`w-full text-left px-6 py-3 rounded-2xl font-bold transition-all ${selectedCat === '0' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
               All Categories
@@ -1574,7 +1633,7 @@ export default function App() {
             {filteredCats.map(cat => (
               <button 
                 key={cat.category_id}
-                onClick={() => setSelectedCat(cat.category_id)}
+                onClick={() => { setSelectedCat(cat.category_id); setShowSidebar(false); }}
                 className={`w-full text-left px-6 py-3 rounded-2xl font-bold transition-all flex items-center justify-between group ${selectedCat === cat.category_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
               >
                 <span className="truncate">{cat.category_name}</span>
@@ -1585,47 +1644,44 @@ export default function App() {
         </aside>
 
         {/* CONTENT AREA */}
-        <section className="flex-1 flex flex-col bg-white dark:bg-gray-900">
-          <div className="p-6 border-b dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30">
+        <section className="flex-1 flex flex-col bg-white dark:bg-gray-900 relative">
+          <div className="p-4 md:p-6 border-b dark:border-gray-800 flex flex-col lg:flex-row gap-4 lg:items-center justify-between bg-gray-50/50 dark:bg-gray-800/30">
             <div className="flex flex-col">
-              <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-3 uppercase tracking-tight">
-                {activeTab === 'movies' ? <Film className="text-blue-600" size={22}/> : <Tv className="text-blue-600" size={22}/>}
-                {categories.find(c => c.category_id === selectedCat)?.category_name || 'All Categories'}
+              <h2 className="text-lg md:text-xl font-black text-gray-900 dark:text-white flex items-center gap-3 uppercase tracking-tight truncate">
+                {activeTab === 'movies' ? <Film className="text-blue-600 flex-shrink-0" size={22}/> : <Tv className="text-blue-600 flex-shrink-0" size={22}/>}
+                <span className="truncate">{categories.find(c => c.category_id === selectedCat)?.category_name || 'All Categories'}</span>
               </h2>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-8">{totalItems} items found</p>
             </div>
             
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 md:gap-6 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
               {/* View Mode Switcher */}
-              <div className="flex bg-gray-100 dark:bg-gray-800/50 rounded-2xl p-1 border dark:border-gray-800 shadow-inner">
+              <div className="flex bg-gray-100 dark:bg-gray-800/50 rounded-2xl p-1 border dark:border-gray-800 shadow-inner flex-shrink-0">
                 <button 
                   onClick={() => setViewMode('poster')}
-                  title="Poster Grid"
-                  className={`p-2 rounded-xl transition-all ${viewMode === 'poster' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
+                  className={`p-2 rounded-xl transition-all ${viewMode === 'poster' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}
                 >
                   <LayoutGrid size={18}/>
                 </button>
                 <button 
                   onClick={() => setViewMode('compact')}
-                  title="Compact List"
-                  className={`p-2 rounded-xl transition-all ${viewMode === 'compact' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
+                  className={`p-2 rounded-xl transition-all ${viewMode === 'compact' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}
                 >
                   <List size={18}/>
                 </button>
                 <button 
                   onClick={() => setViewMode('thin')}
-                  title="Thin List"
-                  className={`p-2 rounded-xl transition-all ${viewMode === 'thin' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
+                  className={`p-2 rounded-xl transition-all ${viewMode === 'thin' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}
                 >
                   <AlignJustify size={18}/>
                 </button>
               </div>
 
-              <div className="relative w-80">
-                <Search size={18} className="absolute left-5 top-3.5 text-gray-400" />
+              <div className="relative flex-1 lg:w-80 min-w-[200px]">
+                <Search size={18} className="absolute left-5 top-3 text-gray-400" />
                 <input 
-                  placeholder={`Search in ${activeTab}...`}
-                  className="w-full pl-14 pr-6 py-3.5 rounded-[1.5rem] border dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm font-medium"
+                  placeholder={`Search...`}
+                  className="w-full pl-14 pr-6 py-2.5 rounded-2xl border dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm font-medium"
                   value={itemSearch}
                   onChange={e => setItemSearch(e.target.value)}
                 />
@@ -1768,86 +1824,82 @@ export default function App() {
         </section>
       </main>
 
-      {/* FOOTER */}
-      <footer className="h-80 bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl z-20">
-        <div className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-3">
-              <Download size={20} className="text-blue-600"/> Queue
+      {/* FOOTER - Responsive Queue */}
+      <footer className={`${showQueue ? 'h-[80vh]' : 'h-16'} bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl z-50 transition-all duration-500 ease-in-out`}>
+        <div 
+          onClick={() => window.innerWidth < 768 && setShowQueue(!showQueue)}
+          className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-pointer md:cursor-default"
+        >
+          <div className="flex items-center gap-3 md:gap-8 min-w-0">
+            <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2 md:gap-3">
+              <Download size={18} md:size={20} className="text-blue-600"/> 
+              <span className="hidden xs:inline">Queue</span>
             </h3>
             
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 px-4 py-1.5 rounded-full shadow-inner">
-                <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Total: {queue.length}</span>
+            <div className="flex items-center gap-2 md:gap-4 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-full shadow-inner flex-shrink-0">
+                <span className="text-[8px] md:text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">{queue.length}</span>
               </div>
-              <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-4 py-1.5 rounded-full shadow-inner">
-                <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">Remaining: {queue.filter(i => i.status !== 'completed').length}</span>
+              <div className="flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded-full shadow-inner flex-shrink-0">
+                <span className="text-[8px] md:text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">{queue.filter(i => i.status !== 'completed').length} Left</span>
               </div>
-            </div>
-
-            <div className="bg-green-100 dark:bg-green-900/30 px-4 py-1.5 rounded-full flex items-center gap-3 shadow-inner" title="Combined bandwidth and ETA">
-              <div className={`w-2 h-2 rounded-full bg-green-500 ${totalSpeed > 0 ? 'animate-pulse' : ''}`}/>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-black text-green-700 dark:text-green-400 tabular-nums">
-                  {formatSpeed(totalSpeed) || '0 B/s'}
-                </span>
-                {totalSpeed > 0 && globalETA > 0 && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-green-300 dark:bg-green-700"/>
-                    <span className="text-[10px] font-black text-green-600 dark:text-green-500 uppercase tracking-widest">
-                      ETA: {formatETA(globalETA)}
-                    </span>
-                  </>
-                )}
-              </div>
+              {totalSpeed > 0 && (
+                <div className="bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-full flex items-center gap-2 shadow-inner flex-shrink-0" title="Combined bandwidth and ETA">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>
+                  <span className="text-[8px] md:text-xs font-black text-green-700 dark:text-green-400 tabular-nums uppercase">
+                    {formatSpeed(totalSpeed)} {window.innerWidth >= 768 && `• ${formatETA(globalETA)}`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => api.controlQueue('start')} title="Start Workflow" className="p-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all active:scale-90 shadow-lg shadow-green-500/20"><Play size={18}/></button>
-            <button onClick={() => api.controlQueue('pause')} title="Pause Pipeline" className="p-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all active:scale-90 shadow-lg shadow-amber-500/20"><Pause size={18}/></button>
-            <button onClick={() => api.controlQueue('stop')} title="Stop Execution" className="p-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all active:scale-90 shadow-lg shadow-red-500/20"><Square size={18}/></button>
+          <div className="flex gap-1 md:gap-2">
+            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('start'); }} className="p-2 md:p-2.5 bg-green-600 text-white rounded-lg md:rounded-xl hover:bg-green-700 transition-all active:scale-90 shadow-lg shadow-green-500/20"><Play size={16}/></button>
+            <button onClick={(e) => { e.stopPropagation(); api.controlQueue('pause'); }} className="p-2 md:p-2.5 bg-amber-500 text-white rounded-lg md:rounded-xl hover:bg-amber-600 transition-all active:scale-90 shadow-lg shadow-amber-500/20"><Pause size={16}/></button>
             
-            <div className="w-px h-8 bg-gray-200 dark:bg-gray-800 mx-3"></div>
+            <div className="w-px h-6 md:h-8 bg-gray-200 dark:bg-gray-800 mx-1 md:mx-2 hidden sm:block"></div>
             
-            <button onClick={() => api.controlQueue('restart-failed')} title="Retry Failures" className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all active:scale-90 shadow-lg shadow-blue-500/20"><RefreshCw size={18}/></button>
-            <button onClick={() => api.controlQueue('clear-completed')} title="Prune Completed" className="p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all active:scale-90 shadow-sm"><Check size={18}/></button>
-            <button onClick={handleClearAll} title="Wipe Queue" className="p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-sm"><Trash2 size={18}/></button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowQueue(!showQueue); }}
+              className="p-2 md:hidden text-gray-400"
+            >
+              {showQueue ? <ChevronDown size={20}/> : <ChevronUp size={20}/>}
+            </button>
           </div>
         </div>
         
-        <div className="flex-1 overflow-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="flex-1 overflow-auto bg-white dark:bg-gray-950">
+          <table className="w-full text-left border-collapse table-fixed md:table-auto">
             <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Title</th>
-                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Class</th>
-                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
-                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Completion</th>
-                <th className="px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-24 text-center">Ops</th>
+                <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-1/2 md:w-auto">Title</th>
+                <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hidden md:table-cell">Class</th>
+                <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status</th>
+                <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hidden sm:table-cell">Done</th>
+                <th className="px-4 md:px-8 py-3 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 w-16 md:w-24 text-center">Ops</th>
               </tr>
             </thead>
-            <tbody className="divide-y dark:divide-gray-800">
+            <tbody className="divide-y dark:divide-gray-800 text-[10px] md:text-sm">
               {queue.map(item => (
                 <tr key={item.queue_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group">
-                  <td className="px-8 py-3">
+                  <td className="px-4 md:px-8 py-2 md:py-3">
                     <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.title}>{item.title}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] md:text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.title}>{item.title}</span>
                         {item.total_size > 0 && (
-                          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
+                          <span className="text-[8px] md:text-[10px] font-bold text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 hidden xs:inline bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md">
                             {formatSize(item.total_size)}
                           </span>
                         )}
                       </div>
-                      {item.retries > 0 && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-0.5">Recovery Cycle {item.retries}{config?.retry_forever ? '' : `/${config?.max_retries}`}</span>}
                     </div>
                   </td>
-                  <td className="px-8 py-3">
+                  <td className="px-4 md:px-8 py-2 md:py-3 hidden md:table-cell">
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{item.kind}</span>
                   </td>
-                  <td className="px-8 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${
+                  <td className="px-4 md:px-8 py-2 md:py-3">
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-block w-fit px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest shadow-sm ${
                         item.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                         item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                         item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
@@ -1855,42 +1907,33 @@ export default function App() {
                       }`}>{item.status}</span>
                       
                       {item.status === 'downloading' && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 tabular-nums">{formatSpeed(item.speed)}</span>
-                          <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"/>
-                          <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                            {formatETA((item.total_size - item.downloaded_bytes) / item.speed)}
-                          </span>
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                          <span className="text-[8px] md:text-[10px] font-bold text-blue-600 dark:text-blue-400 tabular-nums">{formatSpeed(item.speed)}</span>
                         </div>
                       )}
                     </div>
-                    {item.error && <p className="text-[10px] font-bold text-red-500 mt-2 max-w-xs">{item.error}</p>}
                   </td>
-                  <td className="px-8 py-3">
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden border dark:border-gray-700 shadow-inner">
-                        <div className={`h-full transition-all duration-500 shadow-lg ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600 dark:bg-blue-500'}`} style={{ width: `${item.progress * 100}%` }}/>
+                  <td className="px-4 md:px-8 py-2 md:py-3 hidden sm:table-cell">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 md:h-2.5 overflow-hidden border dark:border-gray-700">
+                        <div className={`h-full transition-all duration-500 ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${item.progress * 100}%` }}/>
                       </div>
-                      <span className="text-[10px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
+                      <span className="text-[9px] md:text-[11px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
                         {Math.round(item.progress * 100)}%
                       </span>
                     </div>
                   </td>
-                  <td className="px-8 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {(item.status === 'failed' || item.status === 'stopped') && (
-                        <button onClick={() => api.restartItem(item.queue_id)} title="Retry" className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"><RefreshCw size={14}/></button>
-                      )}
-                      <button onClick={() => api.removeFromQueue(item.queue_id)} title="Prune" className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"><Trash2 size={14}/></button>
+                  <td className="px-4 md:px-8 py-2 md:py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={(e) => { e.stopPropagation(); api.removeFromQueue(item.queue_id); }} className="p-1.5 bg-gray-100 dark:bg-gray-800 text-gray-400 hover:bg-red-600 hover:text-white rounded-lg transition-all"><Trash2 size={12}/></button>
                     </div>
                   </td>
                 </tr>
               ))}
               {queue.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-8 py-16 text-center text-gray-400 dark:text-gray-600">
-                    <Info size={48} className="mx-auto mb-4 opacity-10" strokeWidth={1}/>
-                    <p className="font-black uppercase tracking-[0.3em] text-[10px]">Pipeline Empty</p>
+                  <td colSpan={5} className="px-8 py-12 text-center text-gray-400 dark:text-gray-600">
+                    <p className="font-black uppercase tracking-[0.3em] text-[8px] md:text-[10px]">Queue Empty</p>
                   </td>
                 </tr>
               )}

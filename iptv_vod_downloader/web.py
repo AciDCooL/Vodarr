@@ -324,6 +324,15 @@ async def test_connection():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.get("/api/account")
+async def get_account_info():
+    """Returns vital account information (expiration, connections, formats)."""
+    try:
+        c = get_client()
+        return c.check_connection()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/system/restart")
 async def restart_system():
     """Restarts the application by exiting the process (Kubernetes will restart the container)."""
