@@ -1740,96 +1740,99 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className={`p-6 ${viewMode === 'poster' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6' : 'flex flex-col space-y-1'}`}>
-               {displayItems.map((item, idx) => {
-                 if (viewMode === 'poster') {                    return (
-                      <div key={idx} className="group relative flex flex-col animate-in fade-in zoom-in-95 duration-300">
-                        <div 
-                          onClick={() => setSelectedItem(item)}
-                          className="aspect-[2/3] rounded-[1.5rem] overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-lg border-2 border-white dark:border-gray-800 transition-all group-hover:scale-[1.03] group-hover:shadow-blue-500/20 group-hover:border-blue-500/50 cursor-pointer"
-                        >
-                          <SafeImage 
-                            src={item.cover} 
-                            className="w-full h-full object-cover" 
-                            alt=""
-                            fallbackIcon={activeTab === 'movies' ? Film : Tv}
-                            iconSize={32}
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
-                              className="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 flex items-center justify-center gap-2"
-                            >
-                              {activeTab === 'series' ? <ChevronRight size={16}/> : <Download size={16}/>}
-                              {activeTab === 'series' ? 'Episodes' : 'Queue'}
-                            </button>
-                          </div>
-                        </div>
-                        <div className="mt-3 px-1">
-                          <h3 className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
-                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{item.display_year || item.year || 'N/A'}</p>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (viewMode === 'compact') {
-                    return (
-                      <div 
-                        key={idx} 
-                        onClick={() => setSelectedItem(item)}
-                        className="px-6 py-3 rounded-[1.5rem] hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-6 flex-1 min-w-0">
-                          <div className="w-12 h-16 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border-2 border-white dark:border-gray-800">
+              <div className="flex flex-col min-h-full">
+                <div className={`p-6 ${viewMode === 'poster' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6' : 'flex flex-col space-y-1'}`}>
+                  {displayItems.map((item, idx) => {
+                    if (viewMode === 'poster') {
+                      return (
+                        <div key={idx} className="group relative flex flex-col animate-in fade-in zoom-in-95 duration-300">
+                          <div 
+                            onClick={() => setSelectedItem(item)}
+                            className="aspect-[2/3] rounded-[1.5rem] overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-lg border-2 border-white dark:border-gray-800 transition-all group-hover:scale-[1.03] group-hover:shadow-blue-500/20 group-hover:border-blue-500/50 cursor-pointer"
+                          >
                             <SafeImage 
                               src={item.cover} 
                               className="w-full h-full object-cover" 
                               alt=""
                               fallbackIcon={activeTab === 'movies' ? Film : Tv}
-                              iconSize={20}
+                              iconSize={32}
                             />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-base font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
-                            <div className="flex items-center gap-3 mt-1">
-                              <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-lg text-[10px] font-black text-gray-500 uppercase tracking-tighter">{item.display_year || item.year || 'N/A'}</span>
-                              {activeTab === 'series' && <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Series</span>}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
+                                className="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                              >
+                                {activeTab === 'series' ? <ChevronRight size={16}/> : <Download size={16}/>}
+                                {activeTab === 'series' ? 'Episodes' : 'Queue'}
+                              </button>
                             </div>
                           </div>
+                          <div className="mt-3 px-1">
+                            <h3 className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{item.display_year || item.year || 'N/A'}</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (viewMode === 'compact') {
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={() => setSelectedItem(item)}
+                          className="px-6 py-3 rounded-[1.5rem] hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-6 flex-1 min-w-0">
+                            <div className="w-12 h-16 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border-2 border-white dark:border-gray-800">
+                              <SafeImage 
+                                src={item.cover} 
+                                className="w-full h-full object-cover" 
+                                alt=""
+                                fallbackIcon={activeTab === 'movies' ? Film : Tv}
+                                iconSize={20}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-base font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-lg text-[10px] font-black text-gray-500 uppercase tracking-tighter">{item.display_year || item.year || 'N/A'}</span>
+                                {activeTab === 'series' && <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Series</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
+                            className="ml-6 bg-blue-600 text-white p-3 rounded-2xl font-bold hover:bg-blue-700 opacity-0 group-hover:opacity-100 transition-all active:scale-90 shadow-lg shadow-blue-500/30 flex items-center gap-2"
+                          >
+                            {activeTab === 'series' ? <ChevronRight size={20}/> : <Download size={20}/>}
+                            {activeTab === 'series' && <span className="text-[10px] font-black uppercase tracking-widest px-1">Episodes</span>}
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // Thin List
+                    return (
+                      <div 
+                        key={idx} 
+                        onClick={() => setSelectedItem(item)}
+                        className="px-4 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <span className="text-[10px] font-black text-gray-400 w-8 tabular-nums">{(offset + idx + 1).toString().padStart(2, '0')}</span>
+                          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
+                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter opacity-60">({item.display_year || item.year || 'N/A'})</span>
                         </div>
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
-                          className="ml-6 bg-blue-600 text-white p-3 rounded-2xl font-bold hover:bg-blue-700 opacity-0 group-hover:opacity-100 transition-all active:scale-90 shadow-lg shadow-blue-500/30 flex items-center gap-2"
+                          className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 p-1.5 rounded-lg hover:bg-blue-600 hover:text-white opacity-0 group-hover:opacity-100 transition-all active:scale-90"
                         >
-                          {activeTab === 'series' ? <ChevronRight size={20}/> : <Download size={20}/>}
-                          {activeTab === 'series' && <span className="text-[10px] font-black uppercase tracking-widest px-1">Episodes</span>}
+                          {activeTab === 'series' ? <ChevronRight size={14}/> : <Download size={14}/>}
                         </button>
                       </div>
                     );
-                  }
-
-                  // Thin List
-                  return (
-                    <div 
-                      key={idx} 
-                      onClick={() => setSelectedItem(item)}
-                      className="px-4 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <span className="text-[10px] font-black text-gray-400 w-8 tabular-nums">{(offset + idx + 1).toString().padStart(2, '0')}</span>
-                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter opacity-60">({item.display_year || item.year || 'N/A'})</span>
-                      </div>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
-                        className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 p-1.5 rounded-lg hover:bg-blue-600 hover:text-white opacity-0 group-hover:opacity-100 transition-all active:scale-90"
-                      >
-                        {activeTab === 'series' ? <ChevronRight size={14}/> : <Download size={14}/>}
-                      </button>
-                    </div>
-                  );
-                })}
+                  })}
+                </div>
                 
                 <div className={`${viewMode === 'poster' ? 'col-span-full' : 'w-full'} flex justify-center p-12`}>
                   <button 
