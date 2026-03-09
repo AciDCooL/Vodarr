@@ -3,7 +3,7 @@ import {
   Download, Pause, Play, Square, Trash2, RefreshCw, Search, X, 
   Settings, Server, Folder, 
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
-  Sun, Moon, Clock, Save, ChevronDown, Info,
+  Sun, Moon, Clock, Save, ChevronDown, 
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
   LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, ChevronUp
 } from 'lucide-react';
@@ -877,12 +877,13 @@ function ItemDetailsModal({
         }
       } catch (err) {
         console.error('Failed to load item details', err);
+        setToast({ message: 'Failed to load details from provider', type: 'error' });
       } finally {
         setLoading(false);
       }
     };
     loadDetails();
-  }, [item, kind]);
+  }, [item, kind, setToast]);
 
   const info = details || item;
 
@@ -1035,7 +1036,7 @@ function EpisodeSelectorModal({
     setSelectedEpisodes(next);
   };
 
-  const toggleSeason = (seasonKey: string, episodes: Episode[]) => {
+  const toggleSeason = (_seasonKey: string, episodes: Episode[]) => {
     const next = new Set(selectedEpisodes);
     const seasonEpIds = episodes.map(e => e.id);
     const allSelected = seasonEpIds.every(id => next.has(id));
