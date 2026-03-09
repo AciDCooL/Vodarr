@@ -31,6 +31,7 @@ interface Config {
   connect_timeout: number;
   read_timeout: number;
   media_management: boolean;
+  debug_mode: boolean;
   admin_username: string;
   admin_password?: string;
   api_key: string;
@@ -1076,11 +1077,28 @@ function SettingsModal({
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="space-y-1">
                   <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">System Maintenance</h3>
-                  <p className="text-sm text-gray-500">Manage the application lifecycle and process.</p>
+                  <p className="text-sm text-gray-500">Manage the application lifecycle and logging.</p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="p-6 bg-gray-50 dark:bg-gray-800/40 rounded-[2rem] border dark:border-gray-800 space-y-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] border dark:border-gray-700">
+                    <div className="space-y-1">
+                      <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Debug Mode</h4>
+                      <p className="text-xs text-gray-500">Enable verbose logging to stdout for troubleshooting.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={config.debug_mode}
+                        onChange={e => setConfig({...config, debug_mode: e.target.checked})}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="p-6 bg-gray-50 dark:bg-gray-800/40 rounded-[2rem] border dark:border-gray-800 space-y-4">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600">
                         <RefreshCw size={24} />

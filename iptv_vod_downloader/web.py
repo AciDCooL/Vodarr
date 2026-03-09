@@ -329,6 +329,7 @@ class ConfigUpdate(BaseModel):
     connect_timeout: Optional[int] = None
     read_timeout: Optional[int] = None
     media_management: Optional[bool] = None
+    debug_mode: Optional[bool] = None
     
     # Auth
     admin_username: Optional[str] = None
@@ -415,10 +416,18 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
     # 1. Extract updates from model
     update_data = update.model_dump(exclude_unset=True)
     
+    if current_config.debug_mode:
+        # Log update data but mask password
+        log_data = update_data.copy()
+        if "admin_password" in log_data:
+            log_data["admin_password"] = "********"
+        logger.debug(f"Config update request: {log_data}")
+    
     # 2. Handle password hashing separately
     if "admin_password" in update_data:
         pw = update_data.pop("admin_password")
         if pw:
+            logger.info("Updating admin password...")
             update_data["admin_password_hash"] = get_password_hash(pw)
     
     # 3. Filter only valid AppConfig keys before saving to DB or applying to object
@@ -433,6 +442,12 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
         data = asdict(current_config)
         data.update(filtered_updates)
         current_config = AppConfig(**data)
+        
+        # Update dynamic log level if debug_mode changed
+        if "debug_mode" in filtered_updates:
+            new_level = logging.DEBUG if filtered_updates["debug_mode"] else logging.INFO
+            logging.getLogger().setLevel(new_level)
+            logger.info(f"Log level switched to {'DEBUG' if filtered_updates['debug_mode'] else 'INFO'}")
     
     # 4. Sync settings to manager
     conf = current_config

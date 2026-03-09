@@ -41,6 +41,7 @@ class AppConfig:
     connect_timeout: int = int(os.getenv("IPTV_CONNECT_TIMEOUT", "5"))
     read_timeout: int = int(os.getenv("IPTV_READ_TIMEOUT", "10"))
     media_management: bool = os.getenv("IPTV_MEDIA_MANAGEMENT", "false").lower() == "true"
+    debug_mode: bool = os.getenv("IPTV_DEBUG", "false").lower() == "true"
     
     # --- AUTHENTICATION ---
     admin_username: str = os.getenv("IPTV_ADMIN_USER", "admin")
