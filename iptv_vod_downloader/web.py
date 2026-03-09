@@ -467,13 +467,23 @@ async def add_to_queue(request: QueueAddRequest):
         meta["original_extension"] = original_ext
         meta["fallbacks"] = fallbacks
         
+        # Try to get file size via HEAD request
+        total_size = 0
+        try:
+            with requests.head(stream_url, timeout=5, headers=build_headers(current_config.user_agent), allow_redirects=True) as r:
+                if r.status_code == 200:
+                    total_size = int(r.headers.get("Content-Length", 0))
+        except:
+            pass
+
         item = DownloadItem(
             item_id=item_id,
             title=data["title"],
             stream_url=stream_url,
             target_path=Path(data["target_path"]),
             kind=kind,
-            meta=meta
+            meta=meta,
+            total_size=total_size
         )
         new_items.append(item)
         queue_items[item.queue_id] = item.as_dict()

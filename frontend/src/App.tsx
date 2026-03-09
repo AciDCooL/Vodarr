@@ -1831,7 +1831,14 @@ export default function App() {
                 <tr key={item.queue_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group">
                   <td className="px-8 py-3">
                     <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.title}>{item.title}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.title}>{item.title}</span>
+                        {item.total_size > 0 && (
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
+                            {formatSize(item.total_size)}
+                          </span>
+                        )}
+                      </div>
                       {item.retries > 0 && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-0.5">Recovery Cycle {item.retries}{config?.retry_forever ? '' : `/${config?.max_retries}`}</span>}
                     </div>
                   </td>
