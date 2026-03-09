@@ -21,15 +21,20 @@
 - **Sonarr Compatible**: Handles series with precision: `TV/Series Title/Season XX/Series Title - SxxExx - Episode Title.ext`.
 - **Naming Standards**: Uses industry-standard sanitization and naming patterns for perfect importing into Plex, Emby, or Jellyfin.
 
+### 🔐 Secure Identity & API
+- **Admin Authentication**: Secure login with bcrypt-hashed passwords and JWT (JSON Web Tokens).
+- **Local Network Bypass**: Option to disable login for local addresses (LAN), ensuring a smooth experience at home while keeping external access secured.
+- **REST API Access**: Full automation support with rotatable API Keys. Use the `X-Api-Key` header to interact with every feature programmatically.
+
 ### 📊 Advanced Queue Control
 - **Two-State Management**: Switch between a discreet footer monitor and a full-screen, maximized management dashboard.
 - **Live Metrics**: Monitor individual speeds, global bandwidth usage, and accurate ETAs based on remaining bytes.
 - **Bulk Operations**: One-click controls to Start, Pause, Stop, Retry Failures, Prune Completed, or Wipe the entire queue.
 
-### 🛡️ Robust & Private
-- **SQLite Persistence**: All settings, queue states, and catalog caches are stored in a single `vodarr.db` file—no more messy JSON files.
-- **Download Window**: Enforce scheduled downloads (e.g., only between 02:00 and 08:00) to respect data caps or ISP throttling.
-- **Safe Imaging**: Custom `SafeImage` component prevents parent-element errors and protects your privacy with `no-referrer` policies for movie covers.
+### 🛡️ Robust & Observable
+- **SQLite Persistence**: All settings, queue states, and catalog caches are stored in a single `vodarr.db` file.
+- **Download Window**: Restrict download activity to specific hours (e.g., overnight) to respect data caps.
+- **Comprehensive Logging**: Real-time logging to both `stdout` and files with a toggleable **Debug Mode** for deep troubleshooting.
 
 ---
 
@@ -57,12 +62,19 @@ services:
       - /your/media/path:/downloads
     environment:
       - TZ=Europe/Amsterdam
+      - IPTV_ADMIN_USER=admin
+      - IPTV_ADMIN_PASS=yourpassword
+      - IPTV_DEBUG=false
     restart: unless-stopped
 ```
 
 ### Environment Variables
 | Variable | Default | Description |
 | :--- | :--- | :--- |
+| `IPTV_ADMIN_USER` | `admin` | Initial administrative username. |
+| `IPTV_ADMIN_PASS` | (None) | Initial administrative password. |
+| `IPTV_AUTH_BYPASS_LOCAL` | `true` | Skip authentication for LAN requests. |
+| `IPTV_DEBUG` | `false` | Enable verbose logging to stdout. |
 | `IPTV_MAX_RETRIES` | `3` | Global retry limit for failed downloads. |
 | `IPTV_CONNECT_TIMEOUT` | `5` | Seconds to wait for server connection. |
 | `IPTV_READ_TIMEOUT` | `10` | Seconds to wait for stream data chunks. |
