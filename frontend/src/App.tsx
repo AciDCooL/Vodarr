@@ -647,7 +647,7 @@ function SettingsModal({
           onSelect={(p) => setConfig({...config, download_dir: p})}
         />
       )}
-      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden border dark:border-gray-800 flex flex-col md:flex-row h-[600px]">
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border dark:border-gray-800 flex flex-col md:flex-row h-[650px]">
         {/* Settings Sidebar */}
         <div className="w-full md:w-64 bg-gray-50 dark:bg-gray-950 border-r dark:border-gray-800 p-6 flex flex-col justify-between">
           <div>

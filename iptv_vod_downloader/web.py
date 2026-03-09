@@ -410,26 +410,31 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
     """Updates configuration and signals the downloader to update its settings."""
     global current_config
     from dataclasses import asdict
-    update_data = update.dict(exclude_unset=True)
+    conf = current_config
     
-    # Handle password hashing
+    # 1. Extract updates from model
+    update_data = update.model_dump(exclude_unset=True)
+    
+    # 2. Handle password hashing separately
     if "admin_password" in update_data:
         pw = update_data.pop("admin_password")
         if pw:
             update_data["admin_password_hash"] = get_password_hash(pw)
     
-    # Save to database
-    db.save_config(update_data)
-    
-    # Update current runtime config
-    data = asdict(current_config)
-    data.update(update_data)
-    
-    # Filter for valid AppConfig fields only
+    # 3. Filter only valid AppConfig keys before saving to DB or applying to object
     valid_keys = asdict(AppConfig()).keys()
-    filtered_data = {k: v for k, v in data.items() if k in valid_keys}
-    current_config = AppConfig(**filtered_data)
+    filtered_updates = {k: v for k, v in update_data.items() if k in valid_keys}
     
+    if filtered_updates:
+        # Persist filtered updates to database
+        db.save_config(filtered_updates)
+        
+        # Update runtime object
+        data = asdict(current_config)
+        data.update(filtered_updates)
+        current_config = AppConfig(**data)
+    
+    # 4. Sync settings to manager
     conf = current_config
     if download_manager:
         download_manager.update_user_agent(conf.user_agent)
