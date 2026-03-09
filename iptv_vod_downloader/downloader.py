@@ -93,6 +93,7 @@ class DownloadManager:
         auto_retry: bool = False,
         max_retries: int = 3,
         retry_forever: bool = False,
+        enable_download_window: bool = False,
         retry_start_hour: int = 0,
         retry_end_hour: int = 24,
         url_builder: Optional[Callable[[DownloadItem], str]] = None,

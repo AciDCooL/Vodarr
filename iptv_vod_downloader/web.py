@@ -174,6 +174,7 @@ def init_downloader():
             auto_retry=conf.auto_retry_failed,
             max_retries=conf.max_retries,
             retry_forever=conf.retry_forever,
+            enable_download_window=conf.enable_download_window,
             retry_start_hour=conf.retry_start_hour,
             retry_end_hour=conf.retry_end_hour,
             url_builder=build_item_url
@@ -421,7 +422,7 @@ async def get_items(kind: str, category_id: str, search: Optional[str] = None, o
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/series/{series_id}")
-async def get_series_info(series_id: string):
+async def get_series_info(series_id: str):
     """Fetches detailed episode information for a specific TV Series."""
     c = get_client()
     try:
