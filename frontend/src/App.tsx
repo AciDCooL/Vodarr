@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
-  Download, Pause, Play, Square, Trash2, RefreshCw, Search, X, 
+  Download, Pause, Play, Trash2, RefreshCw, Search, X, 
   Settings, Server, Folder, 
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, Info,
@@ -96,6 +96,7 @@ const api = {
   }).then(r => r.json()),
   getUAPresets: () => fetch('/api/common-user-agents').then(r => r.json()),
   testConnection: () => fetch('/api/test-connection').then(r => r.json()),
+  getAccountInfo: () => fetch('/api/account').then(r => r.json()),
   getCategories: (kind: 'movies' | 'series', refresh: boolean = false) => fetch(`/api/categories/${kind}${refresh ? '?refresh=true' : ''}`).then(r => r.json()),
   getItems: (kind: 'movies' | 'series', catId: string, search?: string, offset: number = 0, limit: number = 50, refresh: boolean = false) => {
     const params = new URLSearchParams({
@@ -1406,17 +1407,6 @@ export default function App() {
     setToast({ message: 'Catalog cache cleared', type: 'info' });
   };
 
-  const handleClearAll = async () => {
-    setConfirm({
-      title: 'Empty Queue',
-      message: 'Are you sure you want to empty the entire download queue? This will stop all active downloads.',
-      onConfirm: async () => {
-        await api.controlQueue('clear-all');
-        setConfirm(null);
-        setToast({ message: 'Queue emptied', type: 'success' });
-      }
-    });
-  };
 
   // --- Filtered Data Computations ---
 
@@ -1511,7 +1501,7 @@ export default function App() {
             <Menu size={20} />
           </button>
           <div className="bg-blue-600 p-2 md:p-3 rounded-xl md:rounded-[1.25rem] shadow-xl shadow-blue-500/30">
-            <Download className="text-white" size={20} md:size={24} strokeWidth={3} />
+            <Download className="text-white" size={20} strokeWidth={3} />
           </div>
           <div className="hidden sm:block">
             <h1 className="text-lg md:text-xl font-black tracking-tighter text-gray-900 dark:text-white uppercase leading-none">Vodarr</h1>
@@ -1526,7 +1516,7 @@ export default function App() {
               title="Refresh Catalog" 
               className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 rounded-xl md:rounded-2xl hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-90 border dark:border-gray-800"
             >
-              <RefreshCw size={18} md:size={20}/>
+              <RefreshCw size={20}/>
             </button>
 
             <button 
@@ -1534,7 +1524,7 @@ export default function App() {
               title="Toggle Theme" 
               className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 rounded-xl md:rounded-2xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-90 border dark:border-gray-800"
             >
-              {isDarkMode ? <Sun size={18} md:size={20}/> : <Moon size={18} md:size={20}/>}
+              {isDarkMode ? <Sun size={20}/> : <Moon size={20}/>}
             </button>
 
             <div className="w-px h-8 md:h-10 bg-gray-200 dark:bg-gray-800 mx-1 md:mx-2"></div>
@@ -1544,7 +1534,7 @@ export default function App() {
               title="Settings" 
               className="p-2 md:p-3 bg-blue-600 text-white rounded-xl md:rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 active:scale-95 border-2 border-transparent hover:border-white/20"
             >
-              <Settings size={18} md:size={20}/>
+              <Settings size={20}/>
             </button>
           </div>
         </div>
@@ -1835,7 +1825,7 @@ export default function App() {
         >
           <div className="flex items-center gap-3 md:gap-8 min-w-0">
             <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2 md:gap-3">
-              <Download size={18} md:size={20} className="text-blue-600"/> 
+              <Download size={20} className="text-blue-600"/> 
               <span className="hidden xs:inline">Queue</span>
             </h3>
             
