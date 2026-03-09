@@ -907,9 +907,9 @@ function ItemDetailsModal({
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                 <button 
                   onClick={() => setShowPlayer(true)}
-                  className="bg-white/20 backdrop-blur-md p-6 rounded-full text-white hover:scale-110 transition-all shadow-2xl"
+                  className="bg-blue-600 p-8 rounded-full text-white hover:scale-110 transition-all shadow-2xl shadow-blue-500/50 flex items-center justify-center group/play"
                 >
-                  <PlayCircle size={64} fill="currentColor" className="text-white" />
+                  <Play size={48} fill="currentColor" className="group-hover/play:scale-110 transition-transform" strokeWidth={3} />
                 </button>
               </div>
             </>
