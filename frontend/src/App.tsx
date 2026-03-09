@@ -1303,7 +1303,7 @@ export default function App() {
   const [selectedSeries, setSelectedSeries] = useState<Item | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
+  const [showQueue, setShowQueue] = useState(true);
   const [isQueueMaximized, setIsQueueMaximized] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -1936,11 +1936,10 @@ export default function App() {
       <footer className={`${
         isQueueMaximized 
           ? 'fixed inset-0 z-[150] h-full' 
-          : `fixed bottom-0 left-0 right-0 z-50 ${showQueue ? 'h-[80vh] md:h-80' : 'h-16'}`
+          : 'fixed bottom-0 left-0 right-0 z-50 h-[80vh] md:h-80'
       } bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl transition-all duration-500 ease-in-out overflow-hidden`}>
         <div 
-          onClick={() => !isQueueMaximized && window.innerWidth < 768 && setShowQueue(!showQueue)}
-          className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-pointer md:cursor-default flex-shrink-0"
+          className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-4 md:px-8 py-3 md:py-4 flex items-center justify-between cursor-default flex-shrink-0"
         >
           <div className="flex items-center gap-3 md:gap-8 min-w-0">
             <h3 className="text-xs md:text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2 md:gap-3">
@@ -1998,18 +1997,11 @@ export default function App() {
             <button onClick={(e) => { e.stopPropagation(); handleClearAll(); }} title="Wipe Queue" className="p-2 md:p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg md:rounded-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-sm hidden md:block"><Trash2 size={16}/></button>
 
             <button 
-              onClick={(e) => { e.stopPropagation(); setIsQueueMaximized(!isQueueMaximized); if (!showQueue) setShowQueue(true); }}
+              onClick={(e) => { e.stopPropagation(); setIsQueueMaximized(!isQueueMaximized); }}
               title={isQueueMaximized ? "Minimize" : "Maximize"}
               className="p-2 md:p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-lg md:rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-90 hidden sm:block"
             >
               {isQueueMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
-            </button>
-
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowQueue(!showQueue); }}
-              className="p-2 md:hidden text-gray-400"
-            >
-              {showQueue ? <ChevronDown size={20}/> : <ChevronUp size={20}/>}
             </button>
           </div>
         </div>
