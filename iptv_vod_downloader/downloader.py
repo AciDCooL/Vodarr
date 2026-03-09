@@ -348,14 +348,20 @@ class DownloadManager:
         item.status = "downloading"
         item.error = None
         item.speed = 0.0
-        item.downloaded_bytes = 0
-        item.total_size = 0
+        # Preserve existing metadata if we are resuming from DB
         item.transient_errors = 0
-        self._notify(item, force=True)
-
+        
         target = item.target_path
         ensure_directory(target.parent)
         temp_path = target.with_suffix(target.suffix + ".part")
+
+        # Initial check for .part file to update progress immediately
+        if temp_path.exists():
+            item.downloaded_bytes = temp_path.stat().st_size
+            if item.total_size > 0:
+                item.progress = item.downloaded_bytes / item.total_size
+        
+        self._notify(item, force=True)
 
         if target.exists():
             item.status = "completed"

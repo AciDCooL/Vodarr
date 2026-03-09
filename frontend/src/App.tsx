@@ -1921,17 +1921,31 @@ export default function App() {
                   </td>
                   <td className="px-4 md:px-8 py-2 md:py-3">
                     <div className="flex flex-col gap-1">
-                      <span className={`inline-block w-fit px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest shadow-sm ${
-                        item.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                        item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                        item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                        'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                      }`}>{item.status}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block w-fit px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest shadow-sm ${
+                          item.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                          item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                          item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                          'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                        }`}>{item.status}</span>
+                        
+                        {item.retries > 0 && item.status !== 'completed' && (
+                          <span className="text-[7px] md:text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/50">
+                            Attempt {item.retries + 1}
+                          </span>
+                        )}
+                      </div>
                       
                       {item.status === 'downloading' && (
                         <div className="flex items-center gap-1.5 whitespace-nowrap">
                           <span className="text-[8px] md:text-[10px] font-bold text-blue-600 dark:text-blue-400 tabular-nums">{formatSpeed(item.speed)}</span>
                         </div>
+                      )}
+                      
+                      {item.error && item.status !== 'completed' && (
+                        <p className="text-[7px] md:text-[8px] font-bold text-red-500/80 dark:text-red-400/80 truncate max-w-[100px] md:max-w-[200px]" title={item.error}>
+                          {item.error}
+                        </p>
                       )}
                     </div>
                   </td>
