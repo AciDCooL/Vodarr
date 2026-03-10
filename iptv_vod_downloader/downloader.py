@@ -90,12 +90,15 @@ class DownloadManager:
         auto_retry: bool = False,
         max_retries: int = 3,
         queue_retry_limit: int = 10,
+        check_stream_limit: bool = True,
+        stream_limit_check_interval: int = 60,
         enable_download_window: bool = False,
         retry_start_hour: int = 0,
         retry_end_hour: int = 24,
         connect_timeout: int = 5,
         read_timeout: int = 10,
         url_builder: Optional[Callable[[DownloadItem], str]] = None,
+        account_checker: Optional[Callable[[], Dict[str, Any]]] = None,
     ) -> None:
         self._queue: List[DownloadItem] = []
         self._lock = threading.Lock()
@@ -111,12 +114,16 @@ class DownloadManager:
         self.max_retries = max_retries
         self.queue_retry_limit = queue_retry_limit
         self._queue_retry_count = 0
+        self.check_stream_limit = check_stream_limit
+        self.stream_limit_interval = stream_limit_check_interval
+        self._is_stream_limit_reached = False
         self.enable_download_window = enable_download_window
         self.retry_start_hour = retry_start_hour
         self.retry_end_hour = retry_end_hour
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
         self.url_builder = url_builder
+        self.account_checker = account_checker
         self._current_item: Optional[DownloadItem] = None
         self._current_response: Optional[requests.Response] = None
         self._cancelled_queue_ids: set[str] = set()
@@ -132,6 +139,10 @@ class DownloadManager:
         self.retry_start_hour = start_hour
         self.retry_end_hour = end_hour
         self.enable_download_window = enable_window
+
+    def update_stream_limit_settings(self, enabled: bool, interval: int) -> None:
+        self.check_stream_limit = enabled
+        self.stream_limit_interval = interval
 
     def update_timeout_settings(self, connect_timeout: int, read_timeout: int) -> None:
         self.connect_timeout = connect_timeout
@@ -268,6 +279,35 @@ class DownloadManager:
                 
                 time.sleep(5) # Check every 5 seconds for the window to open
                 continue
+
+            # --- STREAM LIMIT CHECK ---
+            if self.check_stream_limit and self.account_checker:
+                try:
+                    account = self.account_checker()
+                    u = account.get("user_info", {})
+                    active = int(u.get("active_cons") or 0)
+                    max_cons = int(u.get("max_connections") or 1)
+                    
+                    if active >= max_cons:
+                        logger.warning(f"Stream limit reached ({active}/{max_cons}). Waiting {self.stream_limit_interval}s...")
+                        if self._callback:
+                            self._callback("trigger-stream-limit-reached")
+                        
+                        # Update status of next item to inform user
+                        with self._lock:
+                            if self._queue:
+                                item = self._queue[0]
+                                item.status = "queued"
+                                item.error = f"Waiting: Stream limit reached ({active}/{max_cons})"
+                                self._notify(item, force=True)
+                        
+                        time.sleep(self.stream_limit_interval)
+                        continue
+                    else:
+                        if self._callback:
+                            self._callback("trigger-stream-limit-cleared")
+                except Exception as e:
+                    logger.error(f"Failed to check stream limit: {e}")
 
             item = self._next_item()
             if item is None:

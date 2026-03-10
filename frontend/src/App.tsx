@@ -27,6 +27,9 @@ interface Config {
   max_retries: number;
   auto_retry_queue_limit: number;
   enable_download_window: boolean;
+  check_stream_limit: boolean;
+  stream_limit_check_interval: number;
+  is_stream_limit_reached: boolean;
   retry_start_hour: number;
   retry_end_hour: number;
   connect_timeout: number;
@@ -896,6 +899,35 @@ function SettingsModal({
                       />
                       <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 transition-all"></div>
                     </label>
+                  </div>
+
+                  <div className="pt-6 border-t dark:border-gray-800 space-y-4">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Bandwidth & Limits</h4>
+                    <div className="flex items-center justify-between p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800/50">
+                      <div className="space-y-1">
+                        <h4 className="font-black dark:text-white uppercase tracking-tight text-sm">Check Stream Limit</h4>
+                        <p className="text-xs text-gray-500">Prevent starting downloads if your active IPTV streams are full.</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={config.check_stream_limit}
+                          onChange={e => setConfig({...config, check_stream_limit: e.target.checked})}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 transition-all"></div>
+                      </label>
+                    </div>
+
+                    <div className={`space-y-2 transition-all ${!config.check_stream_limit ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Check Interval (Seconds)</label>
+                      <input 
+                        type="number"
+                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                        value={config.stream_limit_check_interval} 
+                        onChange={e => setConfig({...config, stream_limit_check_interval: parseInt(e.target.value) || 60})}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2005,6 +2037,20 @@ export default function App() {
               <span className="text-[10px] font-black uppercase text-blue-600">Total: {queue.length}</span>
               <span className="text-[10px] font-black uppercase text-green-600">{formatSpeed(totalSpeed)}</span>
               {totalSpeed > 0 && <span className="text-[10px] font-black uppercase text-gray-400">{formatETA(globalETA)}</span>}
+              
+              {config?.enable_download_window && !config.is_in_window && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full animate-pulse shadow-sm">
+                  <Clock size={10} />
+                  <span className="text-[8px] font-black uppercase tracking-tighter">Window Closed</span>
+                </div>
+              )}
+
+              {config?.check_stream_limit && config.is_stream_limit_reached && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full animate-pulse shadow-sm">
+                  <AlertTriangle size={10} />
+                  <span className="text-[8px] font-black uppercase tracking-tighter">Max Streams Reached</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-2">

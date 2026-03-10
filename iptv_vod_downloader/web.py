@@ -220,31 +220,36 @@ def on_download_update(item_or_signal: Union[DownloadItem, str]):
     global _last_save_time
     global queue_items
 
-    if isinstance(item_or_signal, str) and item_or_signal == "trigger-queue-retry":
-        logger.info("Triggering full queue retry of all failed items...")
-        failed_items = []
-        for qid, item_dict in queue_items.items():
-            if item_dict.get("status") == "failed":
-                # Convert back to DownloadItem
-                item = DownloadItem(
-                    queue_id=item_dict["queue_id"],
-                    item_id=item_dict["item_id"],
-                    title=item_dict["title"],
-                    stream_url=item_dict["stream_url"],
-                    target_path=Path(item_dict["target_path"]),
-                    kind=item_dict["kind"],
-                    meta=item_dict.get("meta", {}),
-                    total_size=item_dict["total_size"]
-                )
-                item.status = "queued"
-                item.error = None
-                item.retries = 0
-                failed_items.append(item)
-                queue_items[qid] = item.as_dict()
-        
-        if failed_items and download_manager:
-            download_manager.add_items(failed_items)
-            save_queue_state()
+    if isinstance(item_or_signal, str):
+        if item_or_signal == "trigger-queue-retry":
+            logger.info("Triggering full queue retry of all failed items...")
+            failed_items = []
+            for qid, item_dict in queue_items.items():
+                if item_dict.get("status") == "failed":
+                    # Convert back to DownloadItem
+                    item = DownloadItem(
+                        queue_id=item_dict["queue_id"],
+                        item_id=item_dict["item_id"],
+                        title=item_dict["title"],
+                        stream_url=item_dict["stream_url"],
+                        target_path=Path(item_dict["target_path"]),
+                        kind=item_dict["kind"],
+                        meta=item_dict.get("meta", {}),
+                        total_size=item_dict["total_size"]
+                    )
+                    item.status = "queued"
+                    item.error = None
+                    item.retries = 0
+                    failed_items.append(item)
+                    queue_items[qid] = item.as_dict()
+            
+            if failed_items and download_manager:
+                download_manager.add_items(failed_items)
+                save_queue_state()
+        elif item_or_signal == "trigger-stream-limit-reached":
+            current_config.is_stream_limit_reached = True
+        elif item_or_signal == "trigger-stream-limit-cleared":
+            current_config.is_stream_limit_reached = False
         return
 
     item = item_or_signal
@@ -302,12 +307,15 @@ def init_downloader():
             auto_retry=conf.auto_retry_failed,
             max_retries=conf.max_retries,
             queue_retry_limit=conf.auto_retry_queue_limit,
+            check_stream_limit=conf.check_stream_limit,
+            stream_limit_check_interval=conf.stream_limit_check_interval,
             enable_download_window=conf.enable_download_window,
             retry_start_hour=conf.retry_start_hour,
             retry_end_hour=conf.retry_end_hour,
             connect_timeout=conf.connect_timeout,
             read_timeout=conf.read_timeout,
-            url_builder=build_item_url
+            url_builder=build_item_url,
+            account_checker=get_account_info
         )
         
         # Restore queue from database
@@ -363,6 +371,10 @@ class ConfigUpdate(BaseModel):
     media_management: Optional[bool] = None
     debug_mode: Optional[bool] = None
     
+    # Stream Limit
+    check_stream_limit: Optional[bool] = None
+    stream_limit_check_interval: Optional[int] = None
+
     # Auth
     admin_username: Optional[str] = None
     admin_password: Optional[str] = None
@@ -504,6 +516,7 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
             conf.auto_retry_queue_limit
         )
         download_manager.update_timeout_settings(conf.connect_timeout, conf.read_timeout)
+        download_manager.update_stream_limit_settings(conf.check_stream_limit, conf.stream_limit_check_interval)
     
     resp_data = asdict(conf)
     resp_data["is_complete"] = conf.is_complete()

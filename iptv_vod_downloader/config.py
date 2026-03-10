@@ -37,6 +37,12 @@ class AppConfig:
     max_retries: int = int(os.getenv("IPTV_MAX_RETRIES", "3"))
     auto_retry_queue_limit: int = int(os.getenv("IPTV_QUEUE_RETRY_LIMIT", "10"))
     enable_download_window: bool = os.getenv("IPTV_ENABLE_WINDOW", "false").lower() == "true"
+
+    # --- STREAM LIMIT MANAGEMENT ---
+    check_stream_limit: bool = os.getenv("IPTV_CHECK_STREAM_LIMIT", "true").lower() == "true"
+    stream_limit_check_interval: int = int(os.getenv("IPTV_STREAM_LIMIT_INTERVAL", "60"))
+    is_stream_limit_reached: bool = False # Runtime status
+
     retry_start_hour: int = int(os.getenv("IPTV_RETRY_START", "4"))
     retry_end_hour: int = int(os.getenv("IPTV_RETRY_END", "9"))
     connect_timeout: int = int(os.getenv("IPTV_CONNECT_TIMEOUT", "5"))
