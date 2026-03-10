@@ -12,9 +12,10 @@
 
 ### ⚡ Smart Download Engine
 - **Priority Preemption**: Reorder your queue via drag-and-drop to immediately pause the current download and start your new top priority.
+- **Active Stream Monitoring**: Automatically pauses downloads if your IPTV account's active connection limit is reached, resuming only when a stream becomes free.
 - **Smart Resume**: Automatically detects and resumes from existing `.part` files using HTTP Range headers—never lose progress on a backend restart.
 - **Concurrent Discovery**: Proactively performs `HEAD` requests to streams to discover file sizes and metadata before you even click download.
-- **Dead Link Detection**: Configurable network timeouts allow the worker to zip through broken provider links in seconds.
+- **Full-Queue Auto-Retry**: Automatically restarts all failed items once the queue is exhausted, up to a configurable limit.
 
 ### 📂 Media Management (Radarr/Sonarr Mode)
 - **Radarr Compatible**: Automatically organizes movies into `Movies/Title (Year)/Title (Year).ext`.
@@ -30,11 +31,6 @@
 - **Two-State Management**: Switch between a discreet footer monitor and a full-screen, maximized management dashboard.
 - **Live Metrics**: Monitor individual speeds, global bandwidth usage, and accurate ETAs based on remaining bytes.
 - **Bulk Operations**: One-click controls to Start, Pause, Stop, Retry Failures, Prune Completed, or Wipe the entire queue.
-
-### 🛡️ Robust & Observable
-- **SQLite Persistence**: All settings, queue states, and catalog caches are stored in a single `vodarr.db` file.
-- **Download Window**: Restrict download activity to specific hours (e.g., overnight) to respect data caps.
-- **Comprehensive Logging**: Real-time logging to both `stdout` and files with a toggleable **Debug Mode** for deep troubleshooting.
 
 ---
 
@@ -75,7 +71,10 @@ services:
 | `IPTV_ADMIN_PASS` | (None) | Initial administrative password. |
 | `IPTV_AUTH_BYPASS_LOCAL` | `true` | Skip authentication for LAN requests. |
 | `IPTV_DEBUG` | `false` | Enable verbose logging to stdout. |
-| `IPTV_MAX_RETRIES` | `3` | Global retry limit for failed downloads. |
+| `IPTV_CHECK_STREAM_LIMIT` | `true` | Pause downloads if active streams are full. |
+| `IPTV_STREAM_LIMIT_INTERVAL` | `60` | Seconds to wait before re-checking stream limit. |
+| `IPTV_QUEUE_RETRY_LIMIT` | `10` | Times to retry the full queue after exhaustion. |
+| `IPTV_MAX_RETRIES` | `3` | Max retries per individual download item. |
 | `IPTV_CONNECT_TIMEOUT` | `5` | Seconds to wait for server connection. |
 | `IPTV_READ_TIMEOUT` | `10` | Seconds to wait for stream data chunks. |
 | `IPTV_ENABLE_WINDOW` | `false` | Enable/Disable the download time window. |
