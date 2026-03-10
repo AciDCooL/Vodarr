@@ -2000,23 +2000,98 @@ export default function App() {
             ) : (
               <div className="flex flex-col min-h-full pb-96">
                 <div className={`p-6 ${viewMode === 'poster' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6' : 'flex flex-col space-y-1'}`}>
-                  {displayItems.map((item, idx) => (
-                    <div key={idx} onClick={() => setSelectedItem(item)} className="cursor-pointer">
-                      {viewMode === 'poster' ? (
-                        <div className="group relative flex flex-col">
-                          <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-gray-200 dark:bg-gray-800 border-2 dark:border-gray-800 transition-all group-hover:scale-[1.03] group-hover:border-blue-500">
-                            <SafeImage src={item.cover} alt="" className="w-full h-full object-cover" fallbackIcon={Film} />
+                  {displayItems.map((item, idx) => {
+                    if (viewMode === 'poster') {
+                      return (
+                        <div key={idx} className="group relative flex flex-col animate-in fade-in zoom-in-95 duration-300">
+                          <div 
+                            onClick={() => setSelectedItem(item)}
+                            className="aspect-[2/3] rounded-[1.5rem] overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-lg border-2 border-white dark:border-gray-800 transition-all group-hover:scale-[1.03] group-hover:shadow-blue-500/20 group-hover:border-blue-500/50 cursor-pointer"
+                          >
+                            <SafeImage 
+                              src={item.cover} 
+                              className="w-full h-full object-cover" 
+                              alt=""
+                              fallbackIcon={activeTab === 'movies' ? Film : Tv}
+                              iconSize={32}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
+                                className="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 flex items-center justify-center gap-2"
+                              >
+                                {activeTab === 'series' ? <ChevronRight size={16}/> : <Download size={16}/>}
+                                {activeTab === 'series' ? 'Episodes' : 'Queue'}
+                              </button>
+                            </div>
                           </div>
-                          <h3 className="mt-3 text-xs font-black truncate">{item.name}</h3>
+                          <div className="mt-3 px-1">
+                            <h3 className="text-xs font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
+                            {(item.display_year || item.year) && (
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{item.display_year || item.year}</p>
+                            )}
+                          </div>
                         </div>
-                      ) : (
-                        <div className="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl flex items-center justify-between">
-                          <span className="truncate font-bold">{item.name}</span>
-                          <Download size={14} className="text-gray-400" />
+                      );
+                    }
+
+                    if (viewMode === 'compact') {
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={() => setSelectedItem(item)}
+                          className="px-6 py-3 rounded-[1.5rem] hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-6 flex-1 min-w-0">
+                            <div className="w-12 h-16 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border-2 border-white dark:border-gray-800">
+                              <SafeImage 
+                                src={item.cover} 
+                                className="w-full h-full object-cover" 
+                                alt=""
+                                fallbackIcon={activeTab === 'movies' ? Film : Tv}
+                                iconSize={20}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-base font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
+                              <div className="flex items-center gap-3 mt-1">
+                                {(item.display_year || item.year) && <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-lg text-[10px] font-black text-gray-500 uppercase tracking-tighter">{item.display_year || item.year}</span>}
+                                {activeTab === 'series' && <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Series</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
+                            className="ml-6 bg-blue-600 text-white p-3 rounded-2xl font-bold hover:bg-blue-700 opacity-0 group-hover:opacity-100 transition-all active:scale-90 shadow-lg shadow-blue-500/30 flex items-center gap-2"
+                          >
+                            {activeTab === 'series' ? <ChevronRight size={20}/> : <Download size={20}/>}
+                            {activeTab === 'series' && <span className="text-[10px] font-black uppercase tracking-widest px-1">Episodes</span>}
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      );
+                    }
+
+                    // Thin List
+                    return (
+                      <div 
+                        key={idx} 
+                        onClick={() => setSelectedItem(item)}
+                        className="px-4 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <span className="text-[10px] font-black text-gray-400 w-8 tabular-nums">{(offset + idx + 1).toString().padStart(2, '0')}</span>
+                          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
+                          {(item.display_year || item.year) && <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter opacity-60">({item.display_year || item.year})</span>}
+                        </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
+                          className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 p-1.5 rounded-lg hover:bg-blue-600 hover:text-white opacity-0 group-hover:opacity-100 transition-all active:scale-90"
+                        >
+                          {activeTab === 'series' ? <ChevronRight size={14}/> : <Download size={14}/>}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="flex justify-center p-12">
                   <button onClick={handleLoadMore} disabled={loadingMore} className="px-10 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-50">
@@ -2037,7 +2112,21 @@ export default function App() {
               <span className="text-[10px] font-black uppercase text-blue-600">Total: {queue.length}</span>
               <span className="text-[10px] font-black uppercase text-green-600">{formatSpeed(totalSpeed)}</span>
               {totalSpeed > 0 && <span className="text-[10px] font-black uppercase text-gray-400">{formatETA(globalETA)}</span>}
-              
+
+              {config?.enable_download_window && !config.is_in_window && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full animate-pulse shadow-sm">
+                  <Clock size={10} />
+                  <span className="text-[8px] font-black uppercase tracking-tighter">Window Closed</span>
+                </div>
+              )}
+
+              {config?.check_stream_limit && config.is_stream_limit_reached && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full animate-pulse shadow-sm">
+                  <AlertTriangle size={10} />
+                  <span className="text-[8px] font-black uppercase tracking-tighter">Max Streams Reached</span>
+                </div>
+              )}
+            </div>
               {config?.enable_download_window && !config.is_in_window && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full animate-pulse shadow-sm">
                   <Clock size={10} />
@@ -2073,15 +2162,51 @@ export default function App() {
                 <tr key={item.queue_id} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={handleDrop} className={`group hover:bg-gray-50 dark:hover:bg-gray-800/30 ${dragItem.current === idx ? 'opacity-40' : ''}`}>
                   <td className="pl-6 text-gray-300 cursor-grab active:cursor-grabbing"><GripVertical size={16}/></td>
                   <td className="p-4 font-bold text-xs truncate max-w-xs" title={item.title}>{item.title}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter ${item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{item.status}</span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${item.progress * 100}%` }} />
+                  <td className="px-4 md:px-8 py-2 md:py-3">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block w-fit px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest shadow-sm ${
+                          item.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                          item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                          item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                          'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                        }`}>{item.status}</span>
+                        
+                        {item.retries > 0 && item.status !== 'completed' && (
+                          <span className="text-[7px] md:text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/50">
+                            Attempt {item.retries + 1} {config?.max_retries ? `/ ${config.max_retries + 1}` : ''}
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[10px] font-black tabular-nums">{Math.round(item.progress * 100)}%</span>
+                      
+                      {item.status === 'downloading' && (
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                          <span className="text-[8px] md:text-[10px] font-bold text-blue-600 dark:text-blue-400 tabular-nums">{formatSpeed(item.speed)}</span>
+                        </div>
+                      )}
+                      
+                      {item.error && item.status !== 'completed' && (
+                        <p className="text-[7px] md:text-[8px] font-bold text-red-500/80 dark:text-red-400/80 truncate max-w-[100px] md:max-w-[200px]" title={item.error}>
+                          {item.error}
+                        </p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 md:px-8 py-2 md:py-3 hidden sm:table-cell">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 md:h-2.5 overflow-hidden border dark:border-gray-700">
+                          <div className={`h-full transition-all duration-500 ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${item.progress * 100}%` }}/>
+                        </div>
+                        <span className="text-[9px] md:text-[11px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
+                          {Math.round(item.progress * 100)}%
+                        </span>
+                      </div>
+                      {item.total_size > 0 && (
+                        <p className="text-[8px] md:text-[9px] font-bold text-gray-400 dark:text-gray-500 tabular-nums text-right px-1">
+                          {formatSize(item.downloaded_bytes)} / {formatSize(item.total_size)}
+                        </p>
+                      )}
                     </div>
                   </td>
                   <td className="p-4">
