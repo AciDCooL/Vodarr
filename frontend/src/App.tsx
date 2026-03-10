@@ -1687,6 +1687,7 @@ export default function App() {
     if (!config) return;
     try {
       const updated = await api.updateConfig(config);
+      // Ensure we don't carry over the plaintext password in state
       const cleanUpdated = { ...updated };
       delete cleanUpdated.admin_password;
       
@@ -1808,6 +1809,12 @@ export default function App() {
       console.error('Failed to save new order', err);
     }
   };
+
+  const filteredCats = Array.isArray(categories) ? categories.filter(c => 
+    c.category_name.toLowerCase().includes(catFilter.toLowerCase())
+  ) : [];
+
+  const displayItems = Array.isArray(items) ? items : [];
 
   if (config && !config.is_complete) {
     return (
