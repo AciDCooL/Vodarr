@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Search, RefreshCw, ChevronDown, CheckCircle2, Zap } from 'lucide-react';
+import { X, Search, RefreshCw, CheckCircle2, Zap } from 'lucide-react';
 import { Item, Config, Episode } from '../types';
 import { api } from '../api/client';
 import { sanitiseFilename } from '../utils/format';

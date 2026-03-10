@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Server, Folder, ShieldCheck, CheckCircle2, 
-  ChevronRight, Check, X 
+  ChevronRight, Check 
 } from 'lucide-react';
 import { Config } from '../types';
 import { FolderSelectorModal } from './FolderSelectorModal';

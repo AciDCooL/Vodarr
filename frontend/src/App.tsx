@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  Download, Pause, Play, Trash2, RefreshCw, Search, X, 
+  Download, Pause, Play, Trash2, RefreshCw, Search, 
   Settings, Sun, Moon, Clock, 
-  ChevronRight, Film, Tv, AlertCircle,
+  ChevronRight, Film, Tv, AlertCircle, AlertTriangle, Check,
   LayoutGrid, List, AlignJustify, Menu, GripVertical,
   Maximize2, Minimize2
 } from 'lucide-react';

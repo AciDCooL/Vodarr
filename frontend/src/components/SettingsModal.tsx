@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Server, HardDrive, ShieldCheck, RefreshCw, Clock, Power, 
-  X, Globe, ChevronDown, Folder, Save, Copy
+  X, Globe, ChevronDown, Folder, Save, Copy, Settings
 } from 'lucide-react';
 import { Config } from '../types';
 import { api } from '../api/client';
