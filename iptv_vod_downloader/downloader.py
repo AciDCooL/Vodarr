@@ -89,6 +89,7 @@ class DownloadManager:
         user_agent: Optional[str] = None,
         auto_retry: bool = False,
         max_retries: int = 3,
+        queue_retry_limit: int = 10,
         enable_download_window: bool = False,
         retry_start_hour: int = 0,
         retry_end_hour: int = 24,
@@ -108,6 +109,8 @@ class DownloadManager:
         self._user_agent = user_agent
         self.auto_retry = auto_retry
         self.max_retries = max_retries
+        self.queue_retry_limit = queue_retry_limit
+        self._queue_retry_count = 0
         self.enable_download_window = enable_download_window
         self.retry_start_hour = retry_start_hour
         self.retry_end_hour = retry_end_hour
@@ -122,9 +125,10 @@ class DownloadManager:
     def update_user_agent(self, user_agent: str) -> None:
         self._user_agent = user_agent
 
-    def update_retry_settings(self, auto_retry: bool, max_retries: int, start_hour: int, end_hour: int, enable_window: bool = False) -> None:
+    def update_retry_settings(self, auto_retry: bool, max_retries: int, start_hour: int, end_hour: int, enable_window: bool = False, queue_retry_limit: int = 10) -> None:
         self.auto_retry = auto_retry
         self.max_retries = max_retries
+        self.queue_retry_limit = queue_retry_limit
         self.retry_start_hour = start_hour
         self.retry_end_hour = end_hour
         self.enable_download_window = enable_window
@@ -267,8 +271,24 @@ class DownloadManager:
 
             item = self._next_item()
             if item is None:
+                # QUEUE IS EMPTY - Check if we should auto-retry all failures
+                if self.auto_retry and self._queue_retry_count < self.queue_retry_limit:
+                    self._queue_retry_count += 1
+                    logger.info(f"Queue exhausted. Auto-retry attempt {self._queue_retry_count}/{self.queue_retry_limit} starting...")
+                    # We signal the UI to find all failed and re-add them
+                    if self._callback:
+                        self._callback("trigger-queue-retry")
+                    
+                    # Wait a bit before checking again to allow items to be re-added
+                    time.sleep(5)
+                    continue
+                
                 self._has_items.wait(timeout=self._idle_wait_timeout)
                 continue
+
+            # Reset full queue retry count if we just picked up a completely new item
+            if item.retries == 0:
+                self._queue_retry_count = 0
 
             # --- DYNAMIC URL REFRESH ---
             # If a builder is provided, get the latest URL (handles cred changes)

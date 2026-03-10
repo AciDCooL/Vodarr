@@ -212,12 +212,42 @@ def get_client() -> IPTVClient:
 _last_save_time = 0.0
 SAVE_INTERVAL = 5.0  # Save to disk at most every 5 seconds for progress updates
 
-def on_download_update(item: DownloadItem):
+def on_download_update(item_or_signal: Union[DownloadItem, str]):
     """
     Callback triggered by DownloadManager whenever a download status, 
-    progress, or speed changes.
+    progress, or speed changes, or when a system signal is sent.
     """
     global _last_save_time
+    global queue_items
+
+    if isinstance(item_or_signal, str) and item_or_signal == "trigger-queue-retry":
+        logger.info("Triggering full queue retry of all failed items...")
+        failed_items = []
+        for qid, item_dict in queue_items.items():
+            if item_dict.get("status") == "failed":
+                # Convert back to DownloadItem
+                item = DownloadItem(
+                    queue_id=item_dict["queue_id"],
+                    item_id=item_dict["item_id"],
+                    title=item_dict["title"],
+                    stream_url=item_dict["stream_url"],
+                    target_path=Path(item_dict["target_path"]),
+                    kind=item_dict["kind"],
+                    meta=item_dict.get("meta", {}),
+                    total_size=item_dict["total_size"]
+                )
+                item.status = "queued"
+                item.error = None
+                item.retries = 0
+                failed_items.append(item)
+                queue_items[qid] = item.as_dict()
+        
+        if failed_items and download_manager:
+            download_manager.add_items(failed_items)
+            save_queue_state()
+        return
+
+    item = item_or_signal
     queue_items[item.queue_id] = item.as_dict()
     
     # Force save on status change, otherwise throttle
@@ -271,6 +301,7 @@ def init_downloader():
             user_agent=conf.user_agent,
             auto_retry=conf.auto_retry_failed,
             max_retries=conf.max_retries,
+            queue_retry_limit=conf.auto_retry_queue_limit,
             enable_download_window=conf.enable_download_window,
             retry_start_hour=conf.retry_start_hour,
             retry_end_hour=conf.retry_end_hour,
@@ -323,6 +354,7 @@ class ConfigUpdate(BaseModel):
     cache_expiry_hours: Optional[int] = None
     auto_retry_failed: Optional[bool] = None
     max_retries: Optional[int] = None
+    auto_retry_queue_limit: Optional[int] = None
     enable_download_window: Optional[bool] = None
     retry_start_hour: Optional[int] = None
     retry_end_hour: Optional[int] = None
@@ -468,7 +500,8 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
             conf.max_retries,
             conf.retry_start_hour,
             conf.retry_end_hour,
-            conf.enable_download_window
+            conf.enable_download_window,
+            conf.auto_retry_queue_limit
         )
         download_manager.update_timeout_settings(conf.connect_timeout, conf.read_timeout)
     

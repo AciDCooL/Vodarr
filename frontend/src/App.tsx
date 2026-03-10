@@ -25,6 +25,7 @@ interface Config {
   cache_expiry_hours: number;
   auto_retry_failed: boolean;
   max_retries: number;
+  auto_retry_queue_limit: number;
   enable_download_window: boolean;
   retry_start_hour: number;
   retry_end_hour: number;
@@ -924,14 +925,25 @@ function SettingsModal({
                     </label>
                   </div>
 
-                  <div className={`space-y-2 transition-all ${!config.auto_retry_failed ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Max Retries per Item</label>
-                    <input 
-                      type="number"
-                      className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                      value={config.max_retries} 
-                      onChange={e => setConfig({...config, max_retries: parseInt(e.target.value) || 3})}
-                    />
+                  <div className={`grid grid-cols-2 gap-6 transition-all ${!config.auto_retry_failed ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Max Retries per Item</label>
+                      <input 
+                        type="number"
+                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                        value={config.max_retries} 
+                        onChange={e => setConfig({...config, max_retries: parseInt(e.target.value) || 3})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Queue Retry Limit</label>
+                      <input 
+                        type="number"
+                        className="w-full border-none rounded-2xl px-5 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                        value={config.auto_retry_queue_limit} 
+                        onChange={e => setConfig({...config, auto_retry_queue_limit: parseInt(e.target.value) || 10})}
+                      />
+                    </div>
                   </div>
 
                   <div className="pt-6 border-t dark:border-gray-800 space-y-4">
