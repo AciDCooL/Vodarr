@@ -2110,23 +2110,10 @@ export default function App() {
             <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-3"><Download size={20} className="text-blue-600"/> Queue</h3>
             <div className="flex gap-4">
               <span className="text-[10px] font-black uppercase text-blue-600">Total: {queue.length}</span>
+              <span className="text-[10px] font-black uppercase text-amber-600">{queue.filter(i => i.status !== 'completed').length} Left</span>
               <span className="text-[10px] font-black uppercase text-green-600">{formatSpeed(totalSpeed)}</span>
               {totalSpeed > 0 && <span className="text-[10px] font-black uppercase text-gray-400">{formatETA(globalETA)}</span>}
-
-              {config?.enable_download_window && !config.is_in_window && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full animate-pulse shadow-sm">
-                  <Clock size={10} />
-                  <span className="text-[8px] font-black uppercase tracking-tighter">Window Closed</span>
-                </div>
-              )}
-
-              {config?.check_stream_limit && config.is_stream_limit_reached && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full animate-pulse shadow-sm">
-                  <AlertTriangle size={10} />
-                  <span className="text-[8px] font-black uppercase tracking-tighter">Max Streams Reached</span>
-                </div>
-              )}
-            </div>
+              
               {config?.enable_download_window && !config.is_in_window && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full animate-pulse shadow-sm">
                   <Clock size={10} />
@@ -2155,14 +2142,27 @@ export default function App() {
         <div className="flex-1 overflow-auto">
           <table className="w-full text-left">
             <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 uppercase text-[10px] font-black tracking-widest text-gray-400">
-              <tr><th className="w-12"></th><th className="p-4">Title</th><th className="p-4 w-32">Status</th><th className="p-4 w-48">Progress</th><th className="p-4 w-20">Ops</th></tr>
+              <tr>
+                <th className="w-12"></th>
+                <th className="p-4">Title</th>
+                <th className="p-4 w-32">Status</th>
+                <th className="p-4 w-48">Progress</th>
+                <th className="p-4 w-20">Ops</th>
+              </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-800">
               {queue.map((item, idx) => (
-                <tr key={item.queue_id} draggable onDragStart={() => handleDragStart(idx)} onDragOver={(e) => handleDragOver(e, idx)} onDrop={handleDrop} className={`group hover:bg-gray-50 dark:hover:bg-gray-800/30 ${dragItem.current === idx ? 'opacity-40' : ''}`}>
+                <tr 
+                  key={item.queue_id} 
+                  draggable 
+                  onDragStart={() => handleDragStart(idx)} 
+                  onDragOver={(e) => handleDragOver(e, idx)} 
+                  onDrop={handleDrop} 
+                  className={`group hover:bg-gray-50 dark:hover:bg-gray-800/30 ${dragItem.current === idx ? 'opacity-40' : ''}`}
+                >
                   <td className="pl-6 text-gray-300 cursor-grab active:cursor-grabbing"><GripVertical size={16}/></td>
                   <td className="p-4 font-bold text-xs truncate max-w-xs" title={item.title}>{item.title}</td>
-                  <td className="px-4 md:px-8 py-2 md:py-3">
+                  <td className="p-4">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <span className={`inline-block w-fit px-2 py-0.5 rounded-full text-[7px] md:text-[8px] font-black uppercase tracking-widest shadow-sm ${
@@ -2192,15 +2192,13 @@ export default function App() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 md:px-8 py-2 md:py-3 hidden sm:table-cell">
+                  <td className="p-4">
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 md:h-2.5 overflow-hidden border dark:border-gray-700">
-                          <div className={`h-full transition-all duration-500 ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${item.progress * 100}%` }}/>
+                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                          <div className={`h-full transition-all duration-500 ${item.status === 'completed' ? 'bg-green-500' : 'bg-blue-600'}`} style={{ width: `${item.progress * 100}%` }} />
                         </div>
-                        <span className="text-[9px] md:text-[11px] font-black text-gray-600 dark:text-gray-400 tabular-nums">
-                          {Math.round(item.progress * 100)}%
-                        </span>
+                        <span className="text-[10px] font-black tabular-nums">{Math.round(item.progress * 100)}%</span>
                       </div>
                       {item.total_size > 0 && (
                         <p className="text-[8px] md:text-[9px] font-bold text-gray-400 dark:text-gray-500 tabular-nums text-right px-1">
