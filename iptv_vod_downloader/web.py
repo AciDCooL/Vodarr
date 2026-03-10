@@ -315,7 +315,7 @@ def init_downloader():
             connect_timeout=conf.connect_timeout,
             read_timeout=conf.read_timeout,
             url_builder=build_item_url,
-            account_checker=get_account_info
+            account_checker=get_account_info_sync
         )
         
         # Restore queue from database
@@ -578,14 +578,23 @@ async def test_connection():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@app.get("/api/account")
-async def get_account_info():
-    """Returns vital account information (expiration, connections, formats)."""
+def get_account_info_sync():
+    """Synchronous version of account info fetch for the background worker."""
     try:
         c = get_client()
         return c.check_connection()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Sync account check failed: {e}")
+        return {}
+
+@app.get("/api/account")
+async def get_account_info(user: str = Depends(get_current_user)):
+    """Returns vital account information (expiration, connections, formats)."""
+    # Simply call the sync version
+    data = get_account_info_sync()
+    if not data:
+        raise HTTPException(status_code=500, detail="Failed to fetch account info")
+    return data
 
 @app.post("/api/system/restart")
 async def restart_system():
@@ -688,12 +697,24 @@ async def get_movie_info(stream_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/queue")
-async def get_queue():
+async def get_queue(user: str = Depends(get_current_user)):
     """Returns the current state of the download queue."""
     return list(queue_items.values())
 
+@app.get("/api/status")
+async def get_status(user: str = Depends(get_current_user)):
+    """Returns real-time runtime status (window, stream limit)."""
+    is_in_window = True
+    if download_manager:
+        is_in_window = download_manager._is_in_download_window()
+    
+    return {
+        "is_in_window": is_in_window,
+        "is_stream_limit_reached": current_config.is_stream_limit_reached
+    }
+
 @app.post("/api/queue/add")
-async def add_to_queue(request: QueueAddRequest):
+async def add_to_queue(request: QueueAddRequest, user: str = Depends(get_current_user)):
     """Adds new items to the download worker queue."""
     if not download_manager:
         raise HTTPException(status_code=500, detail="Downloader not initialized")

@@ -143,6 +143,7 @@ const api = {
   },
 
   getConfig: () => api.request('/api/config').then(r => r.json()),
+  getStatus: () => api.request('/api/status').then(r => r.json()),
   updateConfig: async (config: Partial<Config>) => {
     const resp = await api.request('/api/config', {
       method: 'POST',
@@ -670,18 +671,23 @@ function SettingsModal({
 }) {  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'retries' | 'window' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [accountInfo, setAccountInfo] = useState<any>(null);
+  const [refreshingAccount, setRefreshingAccount] = useState(false);
+
+  const fetchAccount = useCallback(async () => {
+    setRefreshingAccount(true);
+    try {
+      const data = await api.getAccountInfo();
+      setAccountInfo(data);
+    } catch (err) {
+      console.error('Failed to fetch account info', err);
+    } finally {
+      setRefreshingAccount(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchAccount = async () => {
-      try {
-        const data = await api.getAccountInfo();
-        setAccountInfo(data);
-      } catch (err) {
-        console.error('Failed to fetch account info', err);
-      }
-    };
     fetchAccount();
-  }, []);
+  }, [fetchAccount]);
 
   if (!config) return null;
 
@@ -803,7 +809,17 @@ function SettingsModal({
                         </p>
                       </div>
                       <div className="p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border dark:border-gray-800">
-                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Active Streams</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Active Streams</p>
+                          <button 
+                            onClick={fetchAccount}
+                            disabled={refreshingAccount}
+                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-all text-gray-400"
+                            title="Refresh Account Status"
+                          >
+                            <RefreshCw size={10} className={refreshingAccount ? 'animate-spin text-blue-500' : ''} />
+                          </button>
+                        </div>
                         <p className="text-sm font-bold mt-1 flex items-center gap-2">
                           <span className={parseInt(accountInfo.user_info.active_cons) >= parseInt(accountInfo.user_info.max_connections) ? 'text-red-500' : 'text-green-500'}>
                             {accountInfo.user_info.active_cons}
@@ -1796,10 +1812,20 @@ export default function App() {
     try {
       const data = await api.getQueue();
       setQueue(Array.isArray(data) ? data : []);
+      
+      // Also fetch status to keep badges fresh
+      const status = await api.getStatus();
+      if (config) {
+        setConfig({
+          ...config,
+          is_in_window: status.is_in_window,
+          is_stream_limit_reached: status.is_stream_limit_reached
+        });
+      }
     } catch (err) {
       console.error('Failed to fetch queue', err);
     }
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     fetchQueue();
