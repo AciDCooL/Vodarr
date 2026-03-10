@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
-  Download, Pause, Play, Square, Trash2, RefreshCw, Search, X, 
+  Download, Pause, Play, Trash2, RefreshCw, Search, X, 
   Settings, Server, Folder, 
   ChevronRight, Film, Tv, CheckCircle2, AlertCircle,
   Sun, Moon, Clock, Save, ChevronDown, 
   ShieldCheck, HardDrive, Zap, Globe, AlertTriangle, Check,
-  LayoutGrid, List, AlignJustify, Power, Star, Calendar, Menu, GripVertical,
+  LayoutGrid, List, AlignJustify, Power, Calendar, Menu, GripVertical,
   Maximize2, Minimize2, Copy
 } from 'lucide-react';
 
@@ -1201,20 +1201,16 @@ function SettingsModal({
 
 // --- Item Details Modal Component ---
 
-function ItemDetailsModal({ item, kind, onClose, onQueue, setToast }: { item: Item, kind: 'movies' | 'series', onClose: () => void, onQueue: (item: Item) => void, setToast: any }) {
+function ItemDetailsModal({ item, kind, onClose, onQueue }: { item: Item, kind: 'movies' | 'series', onClose: () => void, onQueue: (item: Item) => void, setToast: any }) {
   const [info, setInfo] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchInfo = async () => {
-      setLoading(true);
       try {
         const data = kind === 'movies' ? await api.getMovieInfo(item.stream_id!.toString()) : await api.getSeriesInfo(item.series_id!.toString());
         setInfo(data);
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchInfo();
@@ -1945,7 +1941,18 @@ export default function App() {
           
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="flex flex-col items-center justify-center h-full gap-4 opacity-50"><RefreshCw size={48} className="animate-spin text-blue-600" /></div>
+              <div className="flex flex-col items-center justify-center h-full gap-4 opacity-50">
+                <RefreshCw size={48} className="animate-spin text-blue-600" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  {isItemsCached ? 'Restoring from database...' : 'Syncing Library...'}
+                </p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-red-500">
+                <AlertCircle size={48} />
+                <p className="font-bold text-center px-6">{error}</p>
+                <button onClick={() => fetchItems(activeTab, selectedCat, debouncedSearch, 0, false, true)} className="px-6 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl font-black uppercase text-[10px] tracking-widest">Retry Sync</button>
+              </div>
             ) : (
               <div className="flex flex-col min-h-full pb-96">
                 <div className={`p-6 ${viewMode === 'poster' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6' : 'flex flex-col space-y-1'}`}>
@@ -1989,9 +1996,10 @@ export default function App() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => api.controlQueue('start')} className="p-2.5 bg-green-600 text-white rounded-xl"><Play size={16}/></button>
-            <button onClick={() => api.controlQueue('pause')} className="p-2.5 bg-amber-500 text-white rounded-xl"><Pause size={16}/></button>
-            <button onClick={() => api.controlQueue('clear-completed')} className="p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl"><Check size={16}/></button>
+            <button onClick={() => api.controlQueue('start')} className="p-2.5 bg-green-600 text-white rounded-xl" title="Start All"><Play size={16}/></button>
+            <button onClick={() => api.controlQueue('pause')} className="p-2.5 bg-amber-500 text-white rounded-xl" title="Pause All"><Pause size={16}/></button>
+            <button onClick={() => api.controlQueue('clear-completed')} className="p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl" title="Clear Completed"><Check size={16}/></button>
+            <button onClick={handleClearAll} className="p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Wipe Queue"><Trash2 size={16}/></button>
             <button onClick={() => setIsQueueMaximized(!isQueueMaximized)} className="p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl">
               {isQueueMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
             </button>
