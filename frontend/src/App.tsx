@@ -2038,7 +2038,20 @@ export default function App() {
                       <span className="text-[10px] font-black tabular-nums">{Math.round(item.progress * 100)}%</span>
                     </div>
                   </td>
-                  <td className="p-4"><button onClick={() => api.removeFromQueue(item.queue_id)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 size={14}/></button></td>
+                  <td className="p-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); api.restartItem(item.queue_id); }} 
+                        className={`p-1.5 rounded-lg transition-all ${item.status === 'completed' ? 'opacity-20 pointer-events-none' : 'text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
+                        title="Retry Item"
+                      >
+                        <RefreshCw size={14}/>
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); api.removeFromQueue(item.queue_id); }} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-all" title="Remove Item">
+                        <Trash2 size={14}/>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
