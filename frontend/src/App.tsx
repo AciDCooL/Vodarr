@@ -1588,6 +1588,7 @@ export default function App() {
   });
   
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem('view-mode') as ViewMode) || 'compact');
+  const [posterSize, setPosterSize] = useState(() => parseInt(localStorage.getItem('poster-size') || '160'));
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [confirm, setConfirm] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
 
@@ -1970,13 +1971,33 @@ export default function App() {
               <h2 className="text-xl font-black uppercase tracking-tight">{activeTab} • {categories.find(c => c.category_id === selectedCat)?.category_name || 'All'}</h2>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{totalItems} items</p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 border dark:border-gray-700">
-                <button onClick={() => setViewMode('poster')} className={`p-2 rounded-lg ${viewMode === 'poster' ? 'bg-white dark:bg-gray-700 text-blue-600' : 'text-gray-400'}`}><LayoutGrid size={18}/></button>
-                <button onClick={() => setViewMode('compact')} className={`p-2 rounded-lg ${viewMode === 'compact' ? 'bg-white dark:bg-gray-700 text-blue-600' : 'text-gray-400'}`}><List size={18}/></button>
-                <button onClick={() => setViewMode('thin')} className={`p-2 rounded-lg ${viewMode === 'thin' ? 'bg-white dark:bg-gray-700 text-blue-600' : 'text-gray-400'}`}><AlignJustify size={18}/></button>
+            <div className="flex items-center gap-3 md:gap-6 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+              {/* View Mode Switcher */}
+              <div className="flex items-center gap-4 bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 border dark:border-gray-700 shadow-inner flex-shrink-0">
+                <div className="flex gap-1">
+                  <button onClick={() => setViewMode('poster')} className={`p-2 rounded-lg ${viewMode === 'poster' ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm' : 'text-gray-400'}`}><LayoutGrid size={18}/></button>
+                  <button onClick={() => setViewMode('compact')} className={`p-2 rounded-lg ${viewMode === 'compact' ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm' : 'text-gray-400'}`}><List size={18}/></button>
+                  <button onClick={() => setViewMode('thin')} className={`p-2 rounded-lg ${viewMode === 'thin' ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm' : 'text-gray-400'}`}><AlignJustify size={18}/></button>
+                </div>
+                
+                {viewMode !== 'thin' && (
+                  <div className="flex items-center gap-3 px-3 border-l dark:border-gray-700 hidden sm:flex">
+                    <LayoutGrid size={12} className="text-gray-400" />
+                    <input 
+                      type="range" min="100" max="300" step="10"
+                      className="w-24 accent-blue-600 cursor-pointer"
+                      value={posterSize}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setPosterSize(val);
+                        localStorage.setItem('poster-size', val.toString());
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="relative">
+
+              <div className="relative flex-1 lg:w-80 min-w-[200px]">
                 <Search size={18} className="absolute left-4 top-2.5 text-gray-400" />
                 <input placeholder="Search..." className="w-64 pl-12 py-2 rounded-xl border dark:border-gray-700 dark:bg-gray-800" value={itemSearch} onChange={e => setItemSearch(e.target.value)} />
               </div>
@@ -1999,7 +2020,8 @@ export default function App() {
               </div>
             ) : (
               <div className="flex flex-col min-h-full pb-96">
-                <div className={`p-6 ${viewMode === 'poster' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-6' : 'flex flex-col space-y-1'}`}>
+                <div className={`p-4 md:p-6 ${viewMode === 'poster' ? 'grid gap-6' : 'flex flex-col space-y-1'}`}
+                     style={viewMode === 'poster' ? { gridTemplateColumns: `repeat(auto-fill, minmax(${posterSize}px, 1fr))` } : {}}>
                   {displayItems.map((item, idx) => {
                     if (viewMode === 'poster') {
                       return (
@@ -2040,32 +2062,33 @@ export default function App() {
                         <div 
                           key={idx} 
                           onClick={() => setSelectedItem(item)}
-                          className="px-6 py-3 rounded-[1.5rem] hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                          className="px-4 py-1.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
                         >
-                          <div className="flex items-center gap-6 flex-1 min-w-0">
-                            <div className="w-12 h-16 bg-gray-200 dark:bg-gray-700 rounded-xl overflow-hidden flex-shrink-0 shadow-lg border-2 border-white dark:border-gray-800">
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <div className="bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex-shrink-0 shadow-lg border-2 border-white dark:border-gray-800"
+                                 style={{ width: `${posterSize/2.5}px`, height: `${(posterSize/2.5) * 1.5}px` }}>
                               <SafeImage 
                                 src={item.cover} 
                                 className="w-full h-full object-cover" 
                                 alt=""
                                 fallbackIcon={activeTab === 'movies' ? Film : Tv}
-                                iconSize={20}
+                                iconSize={16}
                               />
                             </div>
                             <div className="min-w-0">
-                              <h3 className="text-base font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
-                              <div className="flex items-center gap-3 mt-1">
-                                {(item.display_year || item.year) && <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-lg text-[10px] font-black text-gray-500 uppercase tracking-tighter">{item.display_year || item.year}</span>}
-                                {activeTab === 'series' && <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Series</span>}
+                              <h3 className="text-sm font-black text-gray-800 dark:text-gray-100 truncate uppercase tracking-tight" title={item.name}>{item.name}</h3>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                {(item.display_year || item.year) && <span className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-[9px] font-black text-gray-500 uppercase tracking-tighter">{item.display_year || item.year}</span>}
+                                {activeTab === 'series' && <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Series</span>}
                               </div>
                             </div>
                           </div>
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
-                            className="ml-6 bg-blue-600 text-white p-3 rounded-2xl font-bold hover:bg-blue-700 opacity-0 group-hover:opacity-100 transition-all active:scale-90 shadow-lg shadow-blue-500/30 flex items-center gap-2"
+                            className="ml-4 bg-blue-600 text-white p-2 rounded-xl font-bold hover:bg-blue-700 opacity-0 group-hover:opacity-100 transition-all active:scale-90 shadow-lg shadow-blue-500/30 flex items-center gap-2"
                           >
-                            {activeTab === 'series' ? <ChevronRight size={20}/> : <Download size={20}/>}
-                            {activeTab === 'series' && <span className="text-[10px] font-black uppercase tracking-widest px-1">Episodes</span>}
+                            {activeTab === 'series' ? <ChevronRight size={16}/> : <Download size={16}/>}
+                            {activeTab === 'series' && <span className="text-[9px] font-black uppercase tracking-widest px-1">Episodes</span>}
                           </button>
                         </div>
                       );
@@ -2076,7 +2099,7 @@ export default function App() {
                       <div 
                         key={idx} 
                         onClick={() => setSelectedItem(item)}
-                        className="px-4 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
+                        className="px-4 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between group transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-800 cursor-pointer"
                       >
                         <div className="flex items-center gap-4 flex-1 min-w-0">
                           <span className="text-[10px] font-black text-gray-400 w-8 tabular-nums">{(offset + idx + 1).toString().padStart(2, '0')}</span>
@@ -2085,7 +2108,7 @@ export default function App() {
                         </div>
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleAddToQueue(item); }}
-                          className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 p-1.5 rounded-lg hover:bg-blue-600 hover:text-white opacity-0 group-hover:opacity-100 transition-all active:scale-90"
+                          className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 p-1 rounded-md hover:bg-blue-600 hover:text-white opacity-0 group-hover:opacity-100 transition-all active:scale-90"
                         >
                           {activeTab === 'series' ? <ChevronRight size={14}/> : <Download size={14}/>}
                         </button>
