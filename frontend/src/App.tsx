@@ -48,21 +48,6 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [isQueueMaximized, setIsQueueMaximized] = useState(() => localStorage.getItem('queue-maximized') === 'true');
   const [isQueueMinimized, setIsQueueMinimized] = useState(() => localStorage.getItem('queue-minimized') === 'true');
-  const [isBackendOffline, setIsBackendOffline] = useState(false);
-
-  // Connectivity monitoring
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        await api.healthCheck();
-        setIsBackendOffline(false);
-      } catch (err) {
-        setIsBackendOffline(true);
-      }
-    };
-    const interval = setInterval(checkConnection, 10000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('queue-maximized', isQueueMaximized.toString());
@@ -312,10 +297,8 @@ export default function App() {
           is_stream_limit_reached: status.is_stream_limit_reached
         });
       }
-      setIsBackendOffline(false);
     } catch (err) {
       console.error('Failed to fetch queue', err);
-      setIsBackendOffline(true);
     }
   }, [config]);
 
@@ -408,13 +391,6 @@ export default function App() {
           fetchConfig();
           api.getUAPresets().then(setUAPresets);
         }} />
-      )}
-
-      {isBackendOffline && (
-        <div className="bg-red-600 text-white px-6 py-2 flex items-center justify-center gap-3 animate-in slide-in-from-top duration-300 z-[1000] sticky top-0 shadow-lg">
-          <AlertCircle size={18} className="animate-pulse" />
-          <span className="text-sm font-black uppercase tracking-widest">Connection Lost • Trying to reconnect...</span>
-        </div>
       )}
 
       <header className="h-20 bg-white dark:bg-gray-900 border-b dark:border-gray-800 px-6 md:px-10 flex items-center justify-between shadow-sm z-30 flex-shrink-0">
