@@ -4,7 +4,7 @@ import {
   Settings, Sun, Moon, Clock, 
   ChevronRight, Film, Tv, AlertCircle, AlertTriangle, Check,
   LayoutGrid, List, AlignJustify, Menu, GripVertical,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, MoveUp, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // --- Modular Imports ---
@@ -46,8 +46,16 @@ export default function App() {
   const [selectedSeries, setSelectedSeries] = useState<Item | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [isQueueMaximized, setIsQueueMaximized] = useState(false);
-  const [isQueueMinimized, setIsQueueMinimized] = useState(false);
+  const [isQueueMaximized, setIsQueueMaximized] = useState(() => localStorage.getItem('queue-maximized') === 'true');
+  const [isQueueMinimized, setIsQueueMinimized] = useState(() => localStorage.getItem('queue-minimized') === 'true');
+
+  useEffect(() => {
+    localStorage.setItem('queue-maximized', isQueueMaximized.toString());
+  }, [isQueueMaximized]);
+
+  useEffect(() => {
+    localStorage.setItem('queue-minimized', isQueueMinimized.toString());
+  }, [isQueueMinimized]);
 
   const toggleQueue = () => {
     if (isQueueMinimized) {
@@ -340,6 +348,19 @@ export default function App() {
       await api.reorderQueue(copyListItems.map(item => item.queue_id));
     } catch (err) {
       console.error('Failed to save new order', err);
+    }
+  };
+
+  const handleMoveToTop = async (queueId: string) => {
+    const item = queue.find(i => i.queue_id === queueId);
+    if (!item) return;
+    const newQueue = [item, ...queue.filter(i => i.queue_id !== queueId)];
+    setQueue(newQueue);
+    try {
+      await api.reorderQueue(newQueue.map(i => i.queue_id));
+      setToast({ message: 'Item moved to top', type: 'info' });
+    } catch (err) {
+      console.error('Failed to move item to top', err);
     }
   };
 
@@ -649,16 +670,19 @@ export default function App() {
               )}
             </div>
           </div>
-          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => api.controlQueue('start')} className="p-2.5 bg-green-600 text-white rounded-xl" title="Start All"><Play size={16}/></button>
             <button onClick={() => api.controlQueue('pause')} className="p-2.5 bg-amber-500 text-white rounded-xl" title="Pause All"><Pause size={16}/></button>
             <button onClick={() => api.controlQueue('restart-failed')} className="p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all" title="Requeue All Failed"><RefreshCw size={16}/></button>
             <button onClick={() => api.controlQueue('clear-completed')} className="p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl" title="Clear Completed"><Check size={16}/></button>
             <button onClick={handleClearAll} className="p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Wipe Queue"><Trash2 size={16}/></button>
-            <button onClick={() => setIsQueueMinimized(!isQueueMinimized)} className={`p-2.5 rounded-xl transition-all ${isQueueMinimized ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`} title={isQueueMinimized ? "Restore" : "Minimize"}>
-              <Minimize2 size={16}/>
+            
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-2" />
+
+            <button onClick={() => setIsQueueMinimized(!isQueueMinimized)} className={`p-2.5 rounded-xl transition-all ${isQueueMinimized ? 'bg-blue-600 text-white animate-pulse' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'}`} title={isQueueMinimized ? "Restore" : "Minimize"}>
+              {isQueueMinimized ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
             </button>
-            <button onClick={toggleQueue} className="p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl" title={isQueueMaximized ? "Normalize" : "Maximize"}>
+            <button onClick={toggleQueue} className="p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl hover:bg-gray-200" title={isQueueMaximized ? "Normalize" : "Maximize"}>
               {isQueueMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
             </button>
           </div>
@@ -733,6 +757,13 @@ export default function App() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleMoveToTop(item.queue_id); }} 
+                        className={`p-1.5 rounded-lg transition-all ${idx === 0 || item.status === 'completed' ? 'opacity-20 pointer-events-none' : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30'}`}
+                        title="Move to Top"
+                      >
+                        <MoveUp size={14}/>
+                      </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); api.restartItem(item.queue_id); }} 
                         className={`p-1.5 rounded-lg transition-all ${item.status === 'completed' ? 'opacity-20 pointer-events-none' : 'text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
