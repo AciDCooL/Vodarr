@@ -242,7 +242,7 @@ class DownloadManager:
         return False
 
     def restart_item(self, item: DownloadItem) -> None:
-        \"\"\"Resets item stats and re-queues it at the FRONT for priority.\"\"\"
+        """Resets item stats and re-queues it at the FRONT for priority."""
         item.status = "queued"
         item.progress = 0.0
         item.speed = 0.0
@@ -262,7 +262,7 @@ class DownloadManager:
     # Internal helpers -------------------------------------------------
 
     def _is_in_download_window(self) -> bool:
-        \"\"\"Checks if current local time is within the allowed download window. Result is cached for 10s.\"\"\"
+        """Checks if current local time is within the allowed download window. Result is cached for 10s."""
         if not self.enable_download_window:
             return True
         
