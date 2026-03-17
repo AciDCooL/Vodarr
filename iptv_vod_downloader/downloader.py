@@ -133,6 +133,7 @@ class DownloadManager:
         self._current_response: Optional[requests.Response] = None
         self._cancelled_queue_ids: set[str] = set()
         self._pause_requested_queue_id: Optional[str] = None
+        self._preempted_item_id: Optional[str] = None
         self._last_window_check = 0.0
         self._cached_window_result = True
 
@@ -253,7 +254,8 @@ class DownloadManager:
         with self._lock:
             self._queue.insert(0, item)
             self._has_items.set()
-            if force:
+            if force and self._current_item:
+                self._preempted_item_id = self._current_item.queue_id
                 self._interrupt_current_download()
         self._notify(item, force=True)
 
@@ -594,6 +596,14 @@ class DownloadManager:
         if self._pause_requested_queue_id == item.queue_id or self._paused or item.status == "paused":
             item.status = "paused"
             item.error = None
+            item.speed = 0.0
+            self._requeue_front(item)
+            self._notify(item, force=True)
+            return True
+        if self._preempted_item_id == item.queue_id:
+            self._preempted_item_id = None
+            item.status = "queued"
+            item.error = "Preempted by another download"
             item.speed = 0.0
             self._requeue_front(item)
             self._notify(item, force=True)

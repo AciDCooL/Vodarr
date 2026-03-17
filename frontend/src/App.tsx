@@ -4,7 +4,7 @@ import {
   Settings, Sun, Moon, Clock, 
   ChevronRight, Film, Tv, AlertCircle, AlertTriangle, Check,
   LayoutGrid, List, AlignJustify, Menu, GripVertical,
-  Maximize2, Minimize2, MoveUp, ChevronDown, ChevronUp
+  Maximize2, Minimize2, MoveUp, ChevronDown, ChevronUp, Zap
 } from 'lucide-react';
 
 // --- Modular Imports ---
@@ -672,10 +672,10 @@ export default function App() {
             </div>
           </div>
           <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => api.controlQueue('start')} className="p-2.5 bg-green-600 text-white rounded-xl" title="Start All"><Play size={16}/></button>
-            <button onClick={() => api.controlQueue('pause')} className="p-2.5 bg-amber-500 text-white rounded-xl" title="Pause All"><Pause size={16}/></button>
-            <button onClick={() => api.controlQueue('restart-failed')} className="p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all" title="Requeue All Failed"><RefreshCw size={16}/></button>
-            <button onClick={() => api.controlQueue('clear-completed')} className="p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl" title="Clear Completed"><Check size={16}/></button>
+            <button onClick={() => api.controlQueue('start').then(() => fetchQueue())} className="p-2.5 bg-green-600 text-white rounded-xl" title="Start All"><Play size={16}/></button>
+            <button onClick={() => api.controlQueue('pause').then(() => fetchQueue())} className="p-2.5 bg-amber-500 text-white rounded-xl" title="Pause All"><Pause size={16}/></button>
+            <button onClick={() => api.controlQueue('restart-failed').then(() => fetchQueue())} className="p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all" title="Requeue All Failed"><RefreshCw size={16}/></button>
+            <button onClick={() => api.controlQueue('clear-completed').then(() => fetchQueue())} className="p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl" title="Clear Completed"><Check size={16}/></button>
             <button onClick={handleClearAll} className="p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Wipe Queue"><Trash2 size={16}/></button>
             
             <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-2" />
@@ -761,11 +761,11 @@ export default function App() {
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); api.restartItem(item.queue_id, true); setToast({ message: 'Forcing item to start...', type: 'info' }); }} 
-                        className={`p-1.5 rounded-lg transition-all ${item.status === 'completed' || item.status === 'downloading' ? 'opacity-20 pointer-events-none' : 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30'}`}
+                        onClick={(e) => { e.stopPropagation(); api.restartItem(item.queue_id, true).then(() => fetchQueue()); setToast({ message: 'Forcing item to start...', type: 'info' }); }} 
+                        className={`p-1.5 rounded-lg transition-all ${item.status === 'completed' || item.status === 'downloading' ? 'opacity-20 pointer-events-none' : 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/30'}`}
                         title="Start Now (Preempt Current)"
                       >
-                        <Play size={14}/>
+                        <Zap size={14} fill="currentColor"/>
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleMoveToTop(item.queue_id); }} 
@@ -775,13 +775,13 @@ export default function App() {
                         <MoveUp size={14}/>
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); api.restartItem(item.queue_id); }} 
+                        onClick={(e) => { e.stopPropagation(); api.restartItem(item.queue_id).then(() => fetchQueue()); }} 
                         className={`p-1.5 rounded-lg transition-all ${item.status === 'completed' ? 'opacity-20 pointer-events-none' : 'text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
                         title="Retry Item"
                       >
                         <RefreshCw size={14}/>
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); api.removeFromQueue(item.queue_id); }} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-all" title="Remove Item">
+                      <button onClick={(e) => { e.stopPropagation(); api.removeFromQueue(item.queue_id).then(() => fetchQueue()); }} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-all" title="Remove Item">
                         <Trash2 size={14}/>
                       </button>
                     </div>
