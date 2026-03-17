@@ -752,32 +752,37 @@ async def add_to_queue(request: QueueAddRequest, user: str = Depends(get_current
             
             if kind == "movie":
                 # Movie logic: /Downloads/Movies/Title (Year)/Title (Year).ext
+                # We extract the clean title by removing the extension from the display title
+                clean_title = Path(title).stem
                 year = meta.get("year") or meta.get("display_year")
                 year_suffix = f" ({year})" if year else ""
-                folder_name = f"{title}{year_suffix}"
-                # Construct path relative to the Movies root
-                # Assumes target_path originally looks like .../Movies/Title.ext
-                # We climb up one level to get the 'Movies' root
+                
+                # If the title already contains the year suffix (common from frontend), 
+                # we don't want to duplicate it.
+                if year_suffix and year_suffix in clean_title:
+                    folder_name = clean_title
+                else:
+                    folder_name = f"{clean_title}{year_suffix}"
+
                 root = tp.parent
                 target_path = str(root / folder_name / f"{folder_name}{ext}")
             
             elif kind == "episode":
                 # TV logic: /Downloads/TV/Series Title/Season XX/Series Title - SxxExx - Episode Title.ext
                 series_title = meta.get("series_name", "Unknown Series")
+                # Strip extension from series title if present
+                series_title = Path(series_title).stem.strip()
+                
                 season_num = meta.get("season_num", 1)
                 episode_num = meta.get("episode_num", 1)
-                episode_title = meta.get("episode_title") or title
                 
-                # Sanitize titles
-                series_title = series_title.strip()
+                # Use the provided filename (title) but strip extension
+                clean_filename = Path(title).stem
                 
                 season_folder = f"Season {int(season_num):02d}"
-                filename = f"{series_title} - S{int(season_num):02d}E{int(episode_num):02d} - {episode_title}{ext}"
                 
-                # Assumes target_path originally looks like .../TV/Series Title/filename
-                # We want to insert the Season folder
                 root = tp.parent.parent # The 'TV' folder
-                target_path = str(root / series_title / season_folder / filename)
+                target_path = str(root / series_title / season_folder / f"{clean_filename}{ext}")
 
         # Try to get file size via HEAD request if not already provided
         total_size = data.get("total_size", 0)

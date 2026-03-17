@@ -25,3 +25,7 @@ export const formatETA = (seconds: number) => {
 export const sanitiseFilename = (name: string) => {
   return name.replace(/[<>:"/\\|?*]/g, '').trim();
 };
+
+export const stripExtension = (filename: string) => {
+  return filename.replace(/\.(mp4|mkv|avi|ts|mov|wmv|flv|webm)$/i, '');
+};

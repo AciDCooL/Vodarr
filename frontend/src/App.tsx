@@ -10,7 +10,7 @@ import {
 // --- Modular Imports ---
 import { Config, Category, Item, DownloadItem, ViewMode } from './types';
 import { api } from './api/client';
-import { formatSize, formatSpeed, formatETA, sanitiseFilename } from './utils/format';
+import { formatSize, formatSpeed, formatETA, sanitiseFilename, stripExtension } from './utils/format';
 
 import { SafeImage } from './components/SafeImage';
 import { Toast } from './components/Toast';
@@ -247,7 +247,8 @@ export default function App() {
       const fallbacks = ['mkv', 'mp4', 'avi'].filter(ext => ext !== primaryExt);
       
       const rawName = item.name;
-      const safeMovieName = sanitiseFilename(rawName);
+      const cleanName = stripExtension(rawName);
+      const safeMovieName = sanitiseFilename(cleanName);
       const yearPart = item.year ? ` (${item.year})` : '';
       
       const movieTitle = `${safeMovieName}${yearPart}.${primaryExt}`;

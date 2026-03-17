@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Search, RefreshCw, CheckCircle2, Zap } from 'lucide-react';
 import { Item, Config, Episode } from '../types';
 import { api } from '../api/client';
-import { sanitiseFilename } from '../utils/format';
+import { sanitiseFilename, stripExtension } from '../utils/format';
 
 export function EpisodeSelectorModal({ series, config, onClose, onQueue }: { series: Item, config: Config | null, onClose: () => void, onQueue: (items: any[]) => void }) {
   const [seasons, setSeasons] = useState<Record<string, Episode[]>>({});
@@ -67,8 +67,10 @@ export function EpisodeSelectorModal({ series, config, onClose, onQueue }: { ser
           const streamId = ep.id;
           const ext = ep.container_extension || 'mp4';
           
-          const safeSeriesName = sanitiseFilename(series.name);
-          const safeEpTitle = ep.title ? ` - ${sanitiseFilename(ep.title)}` : '';
+          const cleanSeriesName = stripExtension(series.name);
+          const safeSeriesName = sanitiseFilename(cleanSeriesName);
+          const cleanEpTitle = ep.title ? stripExtension(ep.title) : '';
+          const safeEpTitle = cleanEpTitle ? ` - ${sanitiseFilename(cleanEpTitle)}` : '';
           const sNum = ep.season.toString().padStart(2, '0');
           const eNum = ep.episode_num.toString().padStart(2, '0');
           
