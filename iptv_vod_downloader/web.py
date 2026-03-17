@@ -722,6 +722,11 @@ async def get_version():
     """Returns the current application version."""
     return {"version": VERSION}
 
+@app.get("/api/health")
+async def health_check():
+    """Simple health check for Kubernetes."""
+    return {"status": "ok"}
+
 @app.post("/api/queue/add")
 async def add_to_queue(request: QueueAddRequest, user: str = Depends(get_current_user)):
     """Adds new items to the download worker queue."""

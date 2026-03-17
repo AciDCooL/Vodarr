@@ -54,13 +54,13 @@ export default function App() {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        await api.getVersion();
+        await api.healthCheck();
         setIsBackendOffline(false);
       } catch (err) {
         setIsBackendOffline(true);
       }
     };
-    const interval = setInterval(checkConnection, 5000);
+    const interval = setInterval(checkConnection, 10000);
     return () => clearInterval(interval);
   }, []);
 

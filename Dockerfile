@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY iptv_vod_downloader/ ./iptv_vod_downloader/
 COPY main.py .
+COPY VERSION .
 
 # Copy built frontend from Stage 1
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
