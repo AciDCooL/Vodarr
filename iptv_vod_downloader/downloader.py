@@ -628,11 +628,7 @@ class DownloadManager:
                 curr = self._current_item
                 # Only preempt if it was actually downloading or paused (not just finishing)
                 if curr.status in {"downloading", "paused"}:
-                    curr.status = "queued" # Mark as queued so it doesn't count as a failure
-                    curr.speed = 0.0
-                    self._notify(curr, force=True)
                     self._interrupt_current_download()
-                    # It will be caught by the exception handler and added back to the queue
             
             # 4. Update the pending queue (excluding current if it's still top)
             if self._current_item and self._current_item.queue_id == new_top_item.queue_id:

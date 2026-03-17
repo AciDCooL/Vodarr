@@ -807,25 +807,29 @@ async def reorder_queue(request: ReorderRequest):
     global queue_items
     if not download_manager:
         raise HTTPException(status_code=500, detail="Downloader not initialized")
-    
+
     # Update the internal manager queue
     download_manager.reorder_queue(request.queue_ids)
-    
+
     # Update the in-memory mirror to reflect the new order
     new_mirror = {}
+
+    # First, preserve the order of items requested
     for qid in request.queue_ids:
         if qid in queue_items:
+            # If the item was downloading but is now preempted, 
+            # the manager will eventually update its status to 'queued'
+            # via the _download_item exception handler.
             new_mirror[qid] = queue_items[qid]
-    
-    # Add back any completed/failed items that weren't in the reorder request
+
+    # Add back any items that weren't in the reorder request (e.g. completed, failed)
     for qid, item in queue_items.items():
         if qid not in new_mirror:
             new_mirror[qid] = item
-            
+
     queue_items = new_mirror
     save_queue_state()
     return {"status": "success"}
-
 @app.post("/api/queue/control/{action}")
 async def control_queue(action: str):
     """Controls global queue state (start, pause, stop, clear)."""
