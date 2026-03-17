@@ -14,7 +14,8 @@ export function SettingsModal({
   onClose,
   uaPresets,
   onTest,
-  setToast
+  setToast,
+  version
 }: { 
   config: Config | null, 
   setConfig: (c: Config) => void, 
@@ -22,7 +23,8 @@ export function SettingsModal({
   onClose: () => void,
   uaPresets: Record<string, string>,
   onTest: () => void,
-  setToast: (t: { message: string, type: 'success' | 'error' | 'info' }) => void
+  setToast: (t: { message: string, type: 'success' | 'error' | 'info' }) => void,
+  version?: string
 }) {  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'retries' | 'window' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [showIncompletePicker, setShowIncompletePicker] = useState(false);
@@ -626,9 +628,12 @@ export function SettingsModal({
           </div>
 
           <div className="p-8 md:p-10 bg-gray-50 dark:bg-gray-950/50 border-t dark:border-gray-800 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-400 font-bold text-xs uppercase tracking-widest">
-              <ShieldCheck size={14}/> 
-              <span>Protected Session</span>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 text-gray-400 font-bold text-xs uppercase tracking-widest">
+                <ShieldCheck size={14}/> 
+                <span>Protected Session</span>
+              </div>
+              {version && <span className="text-[10px] font-black text-gray-400 opacity-60 tabular-nums">v{version}</span>}
             </div>
             <button 
               onClick={onSave}

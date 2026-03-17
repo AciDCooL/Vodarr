@@ -44,6 +44,7 @@ export const api = {
 
   getConfig: () => api.request('/api/config').then(r => r.json()),
   getStatus: () => api.request('/api/status').then(r => r.json()),
+  getVersion: () => api.request('/api/version').then(r => r.json()),
   updateConfig: async (config: Partial<Config>) => {
     const resp = await api.request('/api/config', {
       method: 'POST',

@@ -27,6 +27,7 @@ from .api import IPTVClient, APIError
 from .config import AppConfig, COMMON_USER_AGENTS
 from .downloader import DownloadItem, DownloadManager
 from .cache import DatabaseManager
+from .version import VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -715,6 +716,11 @@ async def get_status(user: str = Depends(get_current_user)):
         "is_in_window": is_in_window,
         "is_stream_limit_reached": current_config.is_stream_limit_reached
     }
+
+@app.get("/api/version")
+async def get_version():
+    """Returns the current application version."""
+    return {"version": VERSION}
 
 @app.post("/api/queue/add")
 async def add_to_queue(request: QueueAddRequest, user: str = Depends(get_current_user)):

@@ -24,6 +24,7 @@ import { EpisodeSelectorModal } from './components/EpisodeSelectorModal';
 export default function App() {
   // Application State
   const [config, setConfig] = useState<Config | null>(null);
+  const [version, setVersion] = useState<string>('');
   const [authStatus, setAuthStatus] = useState<{ is_authenticated: boolean, username?: string, bypass_active?: boolean } | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [uaPresets, setUAPresets] = useState<Record<string, string>>({});
@@ -87,6 +88,10 @@ export default function App() {
       try {
         const auth = await api.getAuthStatus();
         setAuthStatus(auth);
+        
+        // Fetch version regardless of auth (it's public)
+        api.getVersion().then(v => setVersion(v.version)).catch(() => {});
+
         if (auth.is_authenticated) {
           fetchConfig();
           const presets = await api.getUAPresets();
@@ -378,6 +383,7 @@ export default function App() {
             <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter italic">
               Vodarr<span className="text-blue-600">.</span>
             </h1>
+            {version && <span className="text-[10px] font-black bg-gray-100 dark:bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full mt-1.5 tabular-nums">v{version}</span>}
           </div>
         </div>
 
@@ -407,6 +413,7 @@ export default function App() {
           uaPresets={uaPresets}
           onTest={() => api.testConnection().then(r => setToast({ message: r.message, type: r.status === 'success' ? 'success' : 'error' }))}
           setToast={setToast}
+          version={version}
         />
       )}
 
