@@ -91,6 +91,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem('view-mode') as ViewMode) || 'compact');
   const [posterSize, setPosterSize] = useState(() => parseInt(localStorage.getItem('poster-size') || '160'));
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const handleCloseToast = useCallback(() => setToast(null), []);
   const [confirm, setConfirm] = useState<{ title: string, message: string, onConfirm: () => void } | null>(null);
 
   const LIMIT = 50;
@@ -446,7 +447,7 @@ export default function App() {
         </div>
       </header>
 
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={handleCloseToast} />}
       {confirm && <ConfirmDialog title={confirm.title} message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
       
       {showSettings && (

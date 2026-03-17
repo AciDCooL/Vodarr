@@ -4,9 +4,9 @@ import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 export function Toast({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) {
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(onClose, 1000);
+    const timer = setTimeout(onClose, 2000);
     return () => clearTimeout(timer);
-  }, [message, onClose]);
+  }, [message]);
 
   if (!message) return null;
 
