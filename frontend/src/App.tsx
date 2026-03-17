@@ -472,10 +472,10 @@ export default function App() {
               <input placeholder="Filter categories..." className="w-full pl-12 py-3 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 rounded-2xl outline-none" value={catFilter} onChange={e => setCatFilter(e.target.value)} />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
-            <button onClick={() => setSelectedCat('0')} className={`w-full text-left px-6 py-3 rounded-2xl ${selectedCat === '0' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : ''}`}>All Categories</button>
+          <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+            <button onClick={() => setSelectedCat('0')} className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedCat === '0' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>All Categories</button>
             {filteredCats.map(cat => (
-              <button key={cat.category_id} onClick={() => setSelectedCat(cat.category_id)} className={`w-full text-left px-6 py-3 rounded-2xl truncate ${selectedCat === cat.category_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : ''}`}>{cat.category_name}</button>
+              <button key={cat.category_id} onClick={() => setSelectedCat(cat.category_id)} className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold truncate transition-all ${selectedCat === cat.category_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>{cat.category_name}</button>
             ))}
           </div>
         </aside>
@@ -718,7 +718,9 @@ export default function App() {
                           item.status === 'downloading' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                           item.status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                           'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                        }`}>{item.status}</span>
+                        }`}>
+                          {item.status === 'queued' && queue.some(i => i.status === 'downloading') ? 'Waiting' : item.status}
+                        </span>
                         
                         {item.retries > 0 && item.status !== 'completed' && (
                           <span className="text-[7px] md:text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/50">
