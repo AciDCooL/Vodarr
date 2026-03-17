@@ -53,13 +53,22 @@ if __name__ == "__main__":
     port = int(os.getenv("IPTV_PORT", "6767"))
     debug_mode = os.getenv("IPTV_DEBUG", "false").lower() == "true"
     
-    logger.info(f"Starting IPTV VOD Downloader on port {port} (Debug: {debug_mode})")
+    logger.info("==================================================")
+    logger.info(f"Vodarr starting on port {port} (Debug: {debug_mode})")
+    logger.info("==================================================")
     
-    uvicorn.run(
-        "iptv_vod_downloader.web:app", 
-        host="0.0.0.0", 
-        port=port, 
-        log_level="debug" if debug_mode else "info",
-        proxy_headers=True,
-        forwarded_allow_ips="*"
-    )
+    try:
+        uvicorn.run(
+            "iptv_vod_downloader.web:app", 
+            host="0.0.0.0", 
+            port=port, 
+            log_level="debug" if debug_mode else "info",
+            proxy_headers=True,
+            forwarded_allow_ips="*"
+        )
+    except Exception as e:
+        logger.critical(f"Application crashed with unhandled error: {e}", exc_info=True)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("Application stopped by user")
+        sys.exit(0)
