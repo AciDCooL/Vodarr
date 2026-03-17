@@ -9,6 +9,7 @@ import { FolderSelectorModal } from './FolderSelectorModal';
 export function SetupWizard({ config, setConfig, onSave }: { config: Config, setConfig: (c: Config) => void, onSave: () => void }) {
   const [step, setStep] = useState<'provider' | 'storage' | 'security' | 'finish'>('provider');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [showIncompletePicker, setShowIncompletePicker] = useState(false);
 
   const steps = [
     { id: 'provider', label: 'Provider', icon: <Server size={20}/>, description: 'Xtream API Details' },
@@ -36,6 +37,13 @@ export function SetupWizard({ config, setConfig, onSave }: { config: Config, set
           currentPath={config.download_dir}
           onClose={() => setShowFolderPicker(false)}
           onSelect={(p) => setConfig({...config, download_dir: p})}
+        />
+      )}
+      {showIncompletePicker && (
+        <FolderSelectorModal 
+          currentPath={config.incomplete_dir || config.download_dir}
+          onClose={() => setShowIncompletePicker(false)}
+          onSelect={(p) => setConfig({...config, incomplete_dir: p})}
         />
       )}
       <div className="bg-white dark:bg-gray-900 rounded-[4rem] shadow-2xl w-full max-w-4xl overflow-hidden border dark:border-gray-800 flex flex-col md:flex-row h-[700px]">
@@ -126,6 +134,24 @@ export function SetupWizard({ config, setConfig, onSave }: { config: Config, set
                       />
                       <button 
                         onClick={() => setShowFolderPicker(true)}
+                        className="w-20 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-3xl hover:bg-blue-600 hover:text-white transition-all active:scale-95 border-2 border-transparent hover:border-blue-500/20"
+                      >
+                        <Folder size={20}/>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Incomplete Path (Optional)</label>
+                    <div className="flex gap-4">
+                      <input 
+                        className="flex-1 border-none rounded-3xl px-8 py-5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all font-bold"
+                        placeholder="Same as download path"
+                        value={config.incomplete_dir || ''} 
+                        onChange={e => setConfig({...config, incomplete_dir: e.target.value})}
+                      />
+                      <button 
+                        onClick={() => setShowIncompletePicker(true)}
                         className="w-20 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-3xl hover:bg-blue-600 hover:text-white transition-all active:scale-95 border-2 border-transparent hover:border-blue-500/20"
                       >
                         <Folder size={20}/>

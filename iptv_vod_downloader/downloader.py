@@ -84,7 +84,7 @@ class DownloadManager:
     _speed_update_interval = 1.0
     _idle_wait_timeout = 0.1
     _chunk_timeout = 2.0  # seconds to wait for a single chunk before counting as stall
-    _chunk_size = 1024 * 128  # 128 KiB
+    _chunk_size = 1024 * 1024  # 1 MiB
 
     def __init__(
         self,
@@ -102,6 +102,7 @@ class DownloadManager:
         read_timeout: int = 10,
         url_builder: Optional[Callable[[DownloadItem], str]] = None,
         account_checker: Optional[Callable[[], Dict[str, Any]]] = None,
+        incomplete_dir: Optional[str] = None,
     ) -> None:
         self._queue: List[DownloadItem] = []
         self._lock = threading.Lock()
@@ -127,10 +128,13 @@ class DownloadManager:
         self.read_timeout = read_timeout
         self.url_builder = url_builder
         self.account_checker = account_checker
+        self.incomplete_dir = Path(incomplete_dir) if incomplete_dir else None
         self._current_item: Optional[DownloadItem] = None
         self._current_response: Optional[requests.Response] = None
         self._cancelled_queue_ids: set[str] = set()
         self._pause_requested_queue_id: Optional[str] = None
+        self._last_window_check = 0.0
+        self._cached_window_result = True
 
     def update_user_agent(self, user_agent: str) -> None:
         self._user_agent = user_agent
@@ -142,6 +146,7 @@ class DownloadManager:
         self.retry_start_hour = start_hour
         self.retry_end_hour = end_hour
         self.enable_download_window = enable_window
+        self._last_window_check = 0.0
 
     def update_stream_limit_settings(self, enabled: bool, interval: int) -> None:
         self.check_stream_limit = enabled
@@ -150,6 +155,9 @@ class DownloadManager:
     def update_timeout_settings(self, connect_timeout: int, read_timeout: int) -> None:
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
+
+    def update_directory_settings(self, incomplete_dir: Optional[str]) -> None:
+        self.incomplete_dir = Path(incomplete_dir) if incomplete_dir else None
 
     def start(self) -> None:
         if self._worker and self._worker.is_alive():
@@ -234,7 +242,7 @@ class DownloadManager:
         return False
 
     def restart_item(self, item: DownloadItem) -> None:
-        """Resets item stats and re-queues it."""
+        \"\"\"Resets item stats and re-queues it at the FRONT for priority.\"\"\"
         item.status = "queued"
         item.progress = 0.0
         item.speed = 0.0
@@ -243,7 +251,7 @@ class DownloadManager:
         item.retries = 0
         item.error = None
         with self._lock:
-            self._queue.append(item)
+            self._queue.insert(0, item)
             self._has_items.set()
         self._notify(item, force=True)
 
@@ -254,17 +262,25 @@ class DownloadManager:
     # Internal helpers -------------------------------------------------
 
     def _is_in_download_window(self) -> bool:
-        """Checks if current local time is within the allowed download window."""
+        \"\"\"Checks if current local time is within the allowed download window. Result is cached for 10s.\"\"\"
         if not self.enable_download_window:
             return True
         
-        now = datetime.datetime.now().hour
+        now_ts = time.monotonic()
+        if now_ts - self._last_window_check < 10.0:
+            return self._cached_window_result
+
+        now_hour = datetime.datetime.now().hour
         if self.retry_start_hour <= self.retry_end_hour:
             # Standard window (e.g., 08:00 to 22:00)
-            return self.retry_start_hour <= now < self.retry_end_hour
+            res = self.retry_start_hour <= now_hour < self.retry_end_hour
         else:
             # Overnight window (e.g., 22:00 to 08:00)
-            return now >= self.retry_start_hour or now < self.retry_end_hour
+            res = now_hour >= self.retry_start_hour or now_hour < self.retry_end_hour
+        
+        self._last_window_check = now_ts
+        self._cached_window_result = res
+        return res
 
     def _run(self) -> None:
         while not self._stop_event.is_set():
@@ -365,7 +381,7 @@ class DownloadManager:
                         item.speed = 0.0
                         
                         with self._lock:
-                            self._queue.append(item)
+                            self._queue.insert(0, item)
                             self._has_items.set()
                         self._notify(item, force=True)
             finally:
@@ -393,14 +409,28 @@ class DownloadManager:
         item.transient_errors = 0
         
         target = item.target_path
-        ensure_directory(target.parent)
-        temp_path = target.with_suffix(target.suffix + ".part")
+        
+        # Determine temporary path (use incomplete_dir if configured)
+        if self.incomplete_dir:
+            temp_path = self.incomplete_dir / (item.queue_id + ".part")
+        else:
+            temp_path = target.with_suffix(target.suffix + ".part")
 
-        # Initial check for .part file to update progress immediately
+        # --- DISK CONSISTENCY CHECK ---
+        # If the item was supposedly partially downloaded but the file is gone, reset.
+        # If the file exists but its size doesn't match our records, trust the disk.
         if temp_path.exists():
-            item.downloaded_bytes = temp_path.stat().st_size
-            if item.total_size > 0:
-                item.progress = item.downloaded_bytes / item.total_size
+            actual_size = temp_path.stat().st_size
+            if item.downloaded_bytes != actual_size:
+                logger.info(f"Resuming {item.title}: adjusting downloaded bytes from {item.downloaded_bytes} to {actual_size} (disk)")
+                item.downloaded_bytes = actual_size
+        else:
+            if item.downloaded_bytes > 0:
+                logger.warning(f"Resuming {item.title}: .part file missing, resetting progress.")
+                item.downloaded_bytes = 0
+
+        if item.total_size > 0:
+            item.progress = item.downloaded_bytes / item.total_size
         
         self._notify(item, force=True)
 
@@ -412,6 +442,8 @@ class DownloadManager:
             item.downloaded_bytes = item.total_size
             self._notify(item, force=True)
             return
+
+        ensure_directory(temp_path.parent)
 
         try:
             existing_size = temp_path.stat().st_size if temp_path.exists() else 0
@@ -521,6 +553,7 @@ class DownloadManager:
                 raise requests.RequestException(f"Connection closed prematurely ({format_size(downloaded)} / {format_size(total)})")
 
             # Successful full download
+            ensure_directory(target.parent)
             temp_path.replace(target)
             item.status = "completed"
             item.progress = 1.0

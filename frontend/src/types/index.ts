@@ -3,6 +3,7 @@ export interface Config {
   username: string;
   password: string;
   download_dir: string;
+  incomplete_dir?: string;
   user_agent: string;
   web_port: number;
   cache_expiry_hours: number;

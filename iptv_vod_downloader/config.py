@@ -26,6 +26,7 @@ class AppConfig:
     username: str = os.getenv("IPTV_USERNAME", "")
     password: str = os.getenv("IPTV_PASSWORD", "")
     download_dir: str = os.getenv("IPTV_DOWNLOAD_DIR", "/downloads" if os.path.exists("/downloads") else str(Path.home() / "Downloads" / "IPTV-VOD"))
+    incomplete_dir: str = os.getenv("IPTV_INCOMPLETE_DIR", "")
     user_agent: str = os.getenv("IPTV_USER_AGENT", (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "

@@ -46,7 +46,20 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [isQueueMaximized, setIsQueueMaximized] = useState(false);
-  
+  const [isQueueMinimized, setIsQueueMinimized] = useState(false);
+
+  const toggleQueue = () => {
+    if (isQueueMinimized) {
+      setIsQueueMinimized(false);
+      setIsQueueMaximized(false);
+    } else if (isQueueMaximized) {
+      setIsQueueMaximized(false);
+      setIsQueueMinimized(false);
+    } else {
+      setIsQueueMaximized(true);
+    }
+  };
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
@@ -601,8 +614,11 @@ export default function App() {
         </section>
       </main>
 
-      <footer className={`${isQueueMaximized ? 'fixed inset-0 z-[150] h-full' : 'fixed bottom-0 left-0 right-0 z-50 h-80'} bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl transition-all duration-500 overflow-hidden`}>
-        <div className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-8 py-4 flex items-center justify-between">
+      <footer className={`
+        ${isQueueMaximized ? 'fixed inset-0 z-[150] h-full' : isQueueMinimized ? 'fixed bottom-0 left-0 right-0 z-50 h-16' : 'fixed bottom-0 left-0 right-0 z-50 h-80'} 
+        bg-white dark:bg-gray-900 border-t dark:border-gray-800 flex flex-col shadow-2xl transition-all duration-500 overflow-hidden
+      `}>
+        <div className="bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 px-8 py-4 flex items-center justify-between cursor-pointer" onClick={() => isQueueMinimized && setIsQueueMinimized(false)}>
           <div className="flex items-center gap-8">
             <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-3"><Download size={20} className="text-blue-600"/> Queue</h3>
             <div className="flex gap-4">
@@ -626,12 +642,16 @@ export default function App() {
               )}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => api.controlQueue('start')} className="p-2.5 bg-green-600 text-white rounded-xl" title="Start All"><Play size={16}/></button>
             <button onClick={() => api.controlQueue('pause')} className="p-2.5 bg-amber-500 text-white rounded-xl" title="Pause All"><Pause size={16}/></button>
+            <button onClick={() => api.controlQueue('restart-failed')} className="p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all" title="Requeue All Failed"><RefreshCw size={16}/></button>
             <button onClick={() => api.controlQueue('clear-completed')} className="p-2.5 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl" title="Clear Completed"><Check size={16}/></button>
             <button onClick={handleClearAll} className="p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-all" title="Wipe Queue"><Trash2 size={16}/></button>
-            <button onClick={() => setIsQueueMaximized(!isQueueMaximized)} className="p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl">
+            <button onClick={() => setIsQueueMinimized(!isQueueMinimized)} className={`p-2.5 rounded-xl transition-all ${isQueueMinimized ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`} title={isQueueMinimized ? "Restore" : "Minimize"}>
+              <Minimize2 size={16}/>
+            </button>
+            <button onClick={toggleQueue} className="p-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl" title={isQueueMaximized ? "Normalize" : "Maximize"}>
               {isQueueMaximized ? <Minimize2 size={16}/> : <Maximize2 size={16}/>}
             </button>
           </div>

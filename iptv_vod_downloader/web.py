@@ -315,7 +315,8 @@ def init_downloader():
             connect_timeout=conf.connect_timeout,
             read_timeout=conf.read_timeout,
             url_builder=build_item_url,
-            account_checker=get_account_info_sync
+            account_checker=get_account_info_sync,
+            incomplete_dir=conf.incomplete_dir
         )
         
         # Restore queue from database
@@ -358,6 +359,7 @@ class ConfigUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     download_dir: Optional[str] = None
+    incomplete_dir: Optional[str] = None
     user_agent: Optional[str] = None
     cache_expiry_hours: Optional[int] = None
     auto_retry_failed: Optional[bool] = None
@@ -517,6 +519,7 @@ async def update_config(update: ConfigUpdate, user: str = Depends(get_current_us
         )
         download_manager.update_timeout_settings(conf.connect_timeout, conf.read_timeout)
         download_manager.update_stream_limit_settings(conf.check_stream_limit, conf.stream_limit_check_interval)
+        download_manager.update_directory_settings(conf.incomplete_dir)
     
     resp_data = asdict(conf)
     resp_data["is_complete"] = conf.is_complete()

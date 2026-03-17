@@ -25,6 +25,7 @@ export function SettingsModal({
   setToast: (t: { message: string, type: 'success' | 'error' | 'info' }) => void
 }) {  const [activeGroup, setActiveGroup] = useState<'server' | 'downloads' | 'security' | 'retries' | 'window' | 'system'>('server');
   const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [showIncompletePicker, setShowIncompletePicker] = useState(false);
   const [accountInfo, setAccountInfo] = useState<any>(null);
   const [refreshingAccount, setRefreshingAccount] = useState(false);
 
@@ -67,6 +68,13 @@ export function SettingsModal({
           currentPath={config.download_dir}
           onClose={() => setShowFolderPicker(false)}
           onSelect={(p) => setConfig({...config, download_dir: p})}
+        />
+      )}
+      {showIncompletePicker && (
+        <FolderSelectorModal 
+          currentPath={config.incomplete_dir || config.download_dir}
+          onClose={() => setShowIncompletePicker(false)}
+          onSelect={(p) => setConfig({...config, incomplete_dir: p})}
         />
       )}
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-6xl overflow-hidden border dark:border-gray-800 flex flex-col md:flex-row h-[700px]">
@@ -219,6 +227,27 @@ export function SettingsModal({
                       </div>
                       <button 
                         onClick={() => setShowFolderPicker(true)}
+                        className="px-5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all border dark:border-gray-800"
+                      >
+                        <Folder size={18}/>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Incomplete Downloads Directory</label>
+                    <div className="flex gap-3">
+                      <div className="relative group flex-1">
+                        <Folder className="absolute left-4 top-3.5 text-gray-400" size={18}/>
+                        <input 
+                          className="w-full border-none rounded-2xl px-12 py-3.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                          placeholder="Optional: Use a separate folder for active downloads"
+                          value={config.incomplete_dir || ''} 
+                          onChange={e => setConfig({...config, incomplete_dir: e.target.value})}
+                        />
+                      </div>
+                      <button 
+                        onClick={() => setShowIncompletePicker(true)}
                         className="px-5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all border dark:border-gray-800"
                       >
                         <Folder size={18}/>
