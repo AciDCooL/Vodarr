@@ -57,14 +57,14 @@ if __name__ == "__main__":
     logger.info(f"Vodarr starting on port {port} (Debug: {debug_mode})")
     logger.info("==================================================")
     
+    from iptv_vod_downloader.web import app
+    
     try:
         uvicorn.run(
-            "iptv_vod_downloader.web:app", 
+            app, 
             host="0.0.0.0", 
             port=port, 
-            log_level="debug" if debug_mode else "info",
-            proxy_headers=True,
-            forwarded_allow_ips="*"
+            log_level="debug" if debug_mode else "info"
         )
     except Exception as e:
         logger.critical(f"Application crashed with unhandled error: {e}", exc_info=True)
