@@ -39,4 +39,4 @@ VOLUME ["/config", "/downloads"]
 EXPOSE 6767
 
 # Start command
-CMD ["uvicorn", "iptv_vod_downloader.web:app", "--host", "0.0.0.0", "--port", "6767"]
+CMD ["python", "main.py"]
