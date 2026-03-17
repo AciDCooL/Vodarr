@@ -241,8 +241,8 @@ class DownloadManager:
                 return True
         return False
 
-    def restart_item(self, item: DownloadItem) -> None:
-        """Resets item stats and re-queues it at the FRONT for priority."""
+    def restart_item(self, item: DownloadItem, force: bool = False) -> None:
+        """Resets item stats and re-queues it at the FRONT for priority. If force=True, preempts current download."""
         item.status = "queued"
         item.progress = 0.0
         item.speed = 0.0
@@ -253,6 +253,8 @@ class DownloadManager:
         with self._lock:
             self._queue.insert(0, item)
             self._has_items.set()
+            if force:
+                self._interrupt_current_download()
         self._notify(item, force=True)
 
     def queued_items(self) -> List[DownloadItem]:

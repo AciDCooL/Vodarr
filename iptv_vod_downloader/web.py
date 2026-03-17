@@ -874,15 +874,15 @@ async def control_queue(action: str):
     return {"status": "success"}
 
 @app.post("/api/queue/restart/{queue_id}")
-async def restart_item(queue_id: str):
-    """Restarts a failed or stopped download."""
+async def restart_item(queue_id: str, force: bool = False):
+    """Restarts a failed or stopped download. If force=True, starts it immediately."""
     if not download_manager:
         raise HTTPException(status_code=500, detail="Downloader not initialized")
-    
+
     item_data = queue_items.get(queue_id)
     if not item_data:
         raise HTTPException(status_code=404, detail="Item not found")
-    
+
     item = DownloadItem(
         item_id=str(item_data["item_id"]),
         title=item_data["title"],
@@ -892,9 +892,8 @@ async def restart_item(queue_id: str):
         meta=item_data.get("meta", {}),
         queue_id=queue_id
     )
-    download_manager.restart_item(item)
+    download_manager.restart_item(item, force=force)
     return {"status": "success"}
-
 @app.delete("/api/queue/{queue_id}")
 async def remove_from_queue(queue_id: str):
     """Removes a specific item from the queue."""

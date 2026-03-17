@@ -473,9 +473,9 @@ export default function App() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
-            <button onClick={() => setSelectedCat('0')} className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedCat === '0' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>All Categories</button>
+            <button onClick={() => setSelectedCat('0')} className={`w-full text-left px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${selectedCat === '0' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>All Categories</button>
             {filteredCats.map(cat => (
-              <button key={cat.category_id} onClick={() => setSelectedCat(cat.category_id)} className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold truncate transition-all ${selectedCat === cat.category_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>{cat.category_name}</button>
+              <button key={cat.category_id} onClick={() => setSelectedCat(cat.category_id)} className={`w-full text-left px-3 py-1.5 rounded-lg text-[11px] font-bold truncate transition-all ${selectedCat === cat.category_id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>{cat.category_name}</button>
             ))}
           </div>
         </aside>
@@ -759,6 +759,13 @@ export default function App() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); api.restartItem(item.queue_id, true); setToast({ message: 'Forcing item to start...', type: 'info' }); }} 
+                        className={`p-1.5 rounded-lg transition-all ${item.status === 'completed' || item.status === 'downloading' ? 'opacity-20 pointer-events-none' : 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30'}`}
+                        title="Start Now (Preempt Current)"
+                      >
+                        <Play size={14}/>
+                      </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleMoveToTop(item.queue_id); }} 
                         className={`p-1.5 rounded-lg transition-all ${idx === 0 || item.status === 'completed' ? 'opacity-20 pointer-events-none' : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30'}`}

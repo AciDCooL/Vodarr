@@ -79,7 +79,7 @@ export const api = {
   }).then(r => r.json()),
   controlQueue: (action: string) => api.request(`/api/queue/control/${action}`, { method: 'POST' }).then(r => r.json()),
   removeFromQueue: (queueId: string) => api.request(`/api/queue/${queueId}`, { method: 'DELETE' }).then(r => r.json()),
-  restartItem: (queueId: string) => api.request(`/api/queue/restart/${queueId}`, { method: 'POST' }).then(r => r.json()),
+  restartItem: (queueId: string, force: boolean = false) => api.request(`/api/queue/restart/${queueId}?force=${force}`, { method: 'POST' }).then(r => r.json()),
   reorderQueue: (queueIds: string[]) => api.request('/api/queue/reorder', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
